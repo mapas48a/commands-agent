@@ -1,0 +1,26 @@
+---
+import { iconRegistry } from "../data/icons";
+import { lucideIcons } from "../data/lucide-icons";
+
+interface Props {
+  name: string;
+  type?: "brand" | "lucide";
+  class?: string;
+}
+
+const { name, type = "brand", class: className = "w-5 h-5" } = Astro.props;
+
+const svgCode =
+  type === "lucide"
+    ? lucideIcons[name] || ""
+    : iconRegistry[name] || "";
+---
+
+<div
+  class={className}
+  data-icon
+  style="display: flex; align-items: center; justify-content: center;"
+  set:html={svgCode}
+  aria-hidden="true"
+>
+</div>

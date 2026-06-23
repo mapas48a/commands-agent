@@ -1,0 +1,16 @@
+---
+import { commands } from "../data/config";
+---
+
+<header class="border-b border-border bg-bg/80 backdrop-blur-sm sticky top-0 z-50">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
+    <span class="font-sans text-lg tracking-tight" style="font-weight: 400;">
+      <span class="text-text">commands</span><span class="text-text-dim">.</span><span class="text-text-muted">agent</span>
+    </span>
+    <div class="flex items-center gap-2 text-xs font-mono text-text-dim">
+      <span>{commands.length} commands</span>
+      <span class="text-border">|</span>
+      <span class="text-text-muted">v1.0</span>
+    </div>
+  </div>
+</header>

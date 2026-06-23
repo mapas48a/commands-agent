@@ -1,11 +1,546 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import Icon from "../components/Icon.astro";
+import { categories, runtimes, providers, models, commands } from "../data/config";
+import { iconRegistry } from "../data/icons";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+function modelsByProvider(providerId: string): typeof models {
+  return models.filter((m) => m.provider === providerId);
+}
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="commands.agent — Slash command marketplace">
+  <Header />
+
+  <main class="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
+    <section class="mb-5">
+      <h1 class="text-2xl sm:text-3xl tracking-tight" style="font-weight: 400;">
+        <span class="text-text">commands</span><span class="text-text-dim">.</span><span class="text-text-muted">agent</span>
+      </h1>
+      <p class="mt-1 font-mono text-sm text-text-muted">
+        Marketplace de slash-commands para tu agente de IA
+      </p>
+    </section>
+
+    <section class="mb-4">
+      <div class="flex flex-wrap gap-1.5" data-category-filter>
+        <button
+          type="button"
+          data-category="all"
+          class="cat-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-sm font-mono transition-all border-text bg-text text-bg"
+        >
+          All
+        </button>
+        {categories.map((cat) => (
+          <button
+            type="button"
+            data-category={cat.id}
+            class="cat-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-sm font-mono transition-all border-border bg-surface text-text-muted hover:border-border-hover hover:text-text"
+          >
+            <Icon name={cat.icon} type="lucide" class="w-3.5 h-3.5" />
+            <span>{cat.name}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+
+    <section class="search-area mb-4">
+      <div class="relative">
+        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-dim pointer-events-none">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" stroke-linecap="round" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          id="search-input"
+          autocomplete="off"
+          placeholder="Search commands..."
+          class="w-full bg-surface border border-border rounded-xl pl-10 pr-32 py-3 text-sm font-mono text-text placeholder:text-text-dim focus:outline-none focus:border-text-dim transition-colors"
+        />
+        <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div class="flex rounded-md border border-border overflow-hidden" data-view-toggle>
+            <button
+              type="button"
+              data-view="list"
+              class="view-btn px-2 py-1 transition-colors bg-text text-bg"
+              aria-label="List view"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round" />
+                <line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round" />
+                <line x1="8" y1="18" x2="21" y2="18" stroke-linecap="round" />
+                <line x1="3" y1="6" x2="3.01" y2="6" stroke-linecap="round" />
+                <line x1="3" y1="12" x2="3.01" y2="12" stroke-linecap="round" />
+                <line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              data-view="grid"
+              class="view-btn px-2 py-1 transition-colors text-text-dim hover:text-text"
+              aria-label="Grid view"
+            >
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+              </svg>
+            </button>
+          </div>
+          <kbd class="text-xs font-mono text-text-dim border border-border rounded px-1.5 py-0.5">/</kbd>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-4">
+      <ul id="command-list" class="command-list space-y-1.5">
+        {commands.map((cmd) => {
+          const cat = categories.find((c) => c.id === cmd.category);
+          return (
+            <li
+              class="command-item group rounded-xl border border-border bg-surface hover:border-border-hover hover:bg-surface-hover transition-all cursor-pointer overflow-visible"
+              data-command-id={cmd.id}
+              data-command-name={cmd.name.toLowerCase()}
+              data-command-category={cmd.category}
+              data-command-desc={cmd.description.toLowerCase()}
+              data-agent-package={cmd.agentPackage}
+              data-model-flag={cmd.modelFlag}
+            >
+              <div class="command-header flex items-center gap-3 px-4 py-3">
+                <div class="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-bg">
+                  {cat && <Icon name={cat.icon} type="lucide" class="w-4 h-4" />}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-mono text-text truncate">
+                    {cmd.name}
+                  </div>
+                  <div class="text-xs font-mono text-text-dim truncate">
+                    {cmd.description}
+                  </div>
+                </div>
+                {cat && (
+                  <span class="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider text-text-dim border border-border rounded-full px-2 py-0.5">
+                    {cat.name}
+                  </span>
+                )}
+                <svg class="w-4 h-4 text-text-dim shrink-0 transition-transform expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </div>
+
+              <div class="command-panel hidden px-4 pb-4 pt-1 border-t border-border bg-bg overflow-visible">
+                <div class="mt-3 rounded-lg border border-border bg-surface p-3">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-text-dim mb-2">
+                    prompt .md
+                  </div>
+                  <pre class="md-content text-xs font-mono text-text-muted whitespace-pre-wrap break-words max-h-80 overflow-y-auto leading-relaxed"></pre>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 mt-3">
+                  <div class="flex items-center gap-1">
+                    {runtimes.map((rt) => (
+                      <button
+                        type="button"
+                        class="runtime-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all"
+                        data-runtime-prefix={rt.prefix}
+                      >
+                        <Icon name={rt.icon} class="w-3 h-3" />
+                        <span>{rt.name}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div class="h-4 w-px bg-border mx-0.5"></div>
+
+                  <div class="relative model-dropdown">
+                    <button
+                      type="button"
+                      class="model-trigger flex items-center gap-1.5 bg-surface border border-border rounded-md pl-2 pr-7 py-1 text-xs font-mono text-text cursor-pointer hover:border-border-hover transition-colors"
+                    >
+                      <span class="model-trigger-icon flex items-center justify-center w-3.5 h-3.5 shrink-0"></span>
+                      <span class="model-trigger-label truncate max-w-[160px] text-text-dim">Select model</span>
+                      <svg class="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-dim pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                    <div class="model-options hidden absolute z-[60] mt-1 w-72 max-h-72 overflow-y-auto bg-surface border border-border rounded-lg shadow-xl left-0">
+                      {providers.map((prov) => (
+                        <div class="provider-group" data-provider={prov.id}>
+                          <div class="flex items-center gap-2 px-3 py-1.5 sticky top-0 bg-surface border-b border-border">
+                            <Icon name={prov.icon} class="w-4 h-4" />
+                            <span class="text-[10px] font-mono uppercase tracking-wider text-text-dim">{prov.name}</span>
+                          </div>
+                          {modelsByProvider(prov.id).map((m) => (
+                            <button
+                              type="button"
+                              class="model-option flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs font-mono text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
+                              data-model-id={m.id}
+                              data-model-name={m.name}
+                              data-provider-id={prov.id}
+                              data-provider-name={prov.name}
+                              data-provider-icon={prov.icon}
+                            >
+                              <span class="text-text-dim w-20 truncate">{m.name}</span>
+                              <span class="text-text-dim text-[10px] flex-1 truncate">{m.id}</span>
+                              {m.context && <span class="text-text-dim text-[10px]">{m.context}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-2.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+                  <code class="command-output flex-1 font-mono text-xs text-text overflow-x-auto whitespace-nowrap">
+                    <span class="text-text-dim">$ </span>
+                  </code>
+                  <button
+                    type="button"
+                    class="copy-btn shrink-0 flex items-center gap-1 text-xs font-mono text-text-dim hover:text-text transition-colors px-2 py-1 rounded hover:bg-surface-hover"
+                  >
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    <span class="copy-label">Copy</span>
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div id="show-more-wrap" class="hidden text-center mt-4">
+        <button
+          type="button"
+          id="show-more-btn"
+          class="text-xs font-mono text-text-muted hover:text-text border border-border hover:border-border-hover rounded-lg px-4 py-2 transition-colors"
+        >
+          Show more ↓
+        </button>
+      </div>
+
+      <div id="no-results" class="hidden text-center py-12 text-text-dim font-mono text-sm">
+        No commands found.
+      </div>
+    </section>
+
+    <footer class="mt-12 pt-6 border-t border-border text-center text-xs font-mono text-text-dim">
+      <p>icons by <a href="https://svgl.app" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">svgl.app</a> + <a href="https://lucide.dev" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">lucide</a></p>
+    </footer>
+  </main>
 </Layout>
+
+<script is:inline define:vars={{ runtimes, commands, models, providers, iconRegistry }}>
+  const providerMap = {};
+  providers.forEach((p) => (providerMap[p.id] = p));
+  const modelMap = {};
+  models.forEach((m) => (modelMap[m.id] = m));
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  let activeCategory = "all";
+  let activeView = "list";
+  let visibleCount = 10;
+  const PAGE_SIZE = 10;
+
+  const searchInput = document.getElementById("search-input");
+  const noResults = document.getElementById("no-results");
+  const allItems = Array.from(document.querySelectorAll(".command-item"));
+  const showMoreWrap = document.getElementById("show-more-wrap");
+  const showMoreBtn = document.getElementById("show-more-btn");
+
+  allItems.forEach((item) => {
+    const cmdId = item.dataset.commandId;
+    const cmd = commands.find((c) => c.id === cmdId);
+    const panel = item.querySelector(".command-panel");
+    const expandIcon = item.querySelector(".expand-icon");
+    const header = item.querySelector(".command-header");
+    const commandOutput = item.querySelector(".command-output");
+    const copyBtn = item.querySelector(".copy-btn");
+    const copyLabel = item.querySelector(".copy-label");
+    const mdContent = item.querySelector(".md-content");
+
+    const modelTrigger = item.querySelector(".model-trigger");
+    const modelTriggerLabel = item.querySelector(".model-trigger-label");
+    const modelTriggerIcon = item.querySelector(".model-trigger-icon");
+    const modelOptions = item.querySelector(".model-options");
+
+    let activeRuntime = runtimes[0];
+    let activeModel = null;
+    let isOpen = false;
+    let modelDropdownOpen = false;
+
+    function renderCommand() {
+      const prefix = activeRuntime.prefix.trim();
+      if (activeModel) {
+        const html =
+          '<span class="text-text-dim">$ </span>' +
+          '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(cmd.agentPackage) + '</span> ' +
+          '<span class="text-text-dim">' + escapeHtml(cmd.modelFlag) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeModel.id) + '</span>';
+        commandOutput.innerHTML = html;
+      } else {
+        const html =
+          '<span class="text-text-dim">$ </span>' +
+          '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(cmd.agentPackage) + '</span> ' +
+          '<span class="text-text-dim">' + escapeHtml(cmd.modelFlag) + '</span> ' +
+          '<span class="text-text-dim">Select model ↓</span>';
+        commandOutput.innerHTML = html;
+      }
+    }
+
+    function getCommandText() {
+      const prefix = activeRuntime.prefix.trim();
+      if (activeModel) {
+        return prefix + " " + cmd.agentPackage + " " + cmd.modelFlag + " " + activeModel.id;
+      }
+      return prefix + " " + cmd.agentPackage + " " + cmd.modelFlag + ' "<model>"';
+    }
+
+    function selectRuntime(rt) {
+      activeRuntime = rt;
+      item.querySelectorAll(".runtime-btn").forEach((btn) => {
+        const isActive = btn.dataset.runtimePrefix === rt.prefix;
+        btn.classList.toggle("border-text", isActive);
+        btn.classList.toggle("bg-text", isActive);
+        btn.classList.toggle("text-bg", isActive);
+        btn.classList.toggle("border-border", !isActive);
+        btn.classList.toggle("text-text-muted", !isActive);
+      });
+      renderCommand();
+    }
+
+    function selectModel(modelId) {
+      const model = modelMap[modelId];
+      if (!model) return;
+      activeModel = model;
+      const provider = providerMap[model.provider];
+
+      modelTriggerLabel.textContent = model.name + " — " + model.id.split("/").pop();
+      modelTriggerLabel.classList.remove("text-text-dim");
+      modelTriggerLabel.classList.add("text-text");
+
+      modelTriggerIcon.innerHTML = "";
+      const svgCode = iconRegistry && iconRegistry[provider.icon];
+      if (svgCode) {
+        modelTriggerIcon.innerHTML = svgCode;
+      }
+
+      item.querySelectorAll(".model-option").forEach((opt) => {
+        opt.classList.toggle("bg-surface-hover", opt.dataset.modelId === modelId);
+        opt.classList.toggle("text-text", opt.dataset.modelId === modelId);
+        opt.classList.toggle("text-text-muted", opt.dataset.modelId !== modelId);
+      });
+
+      closeModelDropdown();
+      renderCommand();
+    }
+
+    function openModelDropdown() {
+      modelDropdownOpen = true;
+      modelOptions.classList.remove("hidden");
+    }
+
+    function closeModelDropdown() {
+      modelDropdownOpen = false;
+      modelOptions.classList.add("hidden");
+    }
+
+    modelTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (modelDropdownOpen) {
+        closeModelDropdown();
+      } else {
+        openModelDropdown();
+      }
+    });
+
+    item.querySelectorAll(".model-option").forEach((opt) => {
+      opt.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectModel(opt.dataset.modelId);
+      });
+    });
+
+    item.querySelectorAll(".runtime-btn").forEach((btn) => {
+      const prefix = btn.dataset.runtimePrefix;
+      const rt = runtimes.find((r) => r.prefix === prefix);
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (rt) selectRuntime(rt);
+      });
+    });
+
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const cmdText = getCommandText();
+      navigator.clipboard.writeText(cmdText).then(() => {
+        copyLabel.textContent = "Copied!";
+        copyBtn.classList.add("text-text");
+        setTimeout(() => {
+          copyLabel.textContent = "Copy";
+          copyBtn.classList.remove("text-text");
+        }, 2000);
+      }).catch(() => {
+        const ta = document.createElement("textarea");
+        ta.value = cmdText;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch {}
+        document.body.removeChild(ta);
+        copyLabel.textContent = "Copied!";
+        setTimeout(() => { copyLabel.textContent = "Copy"; }, 2000);
+      });
+    });
+
+    header.addEventListener("click", () => {
+      isOpen = !isOpen;
+      if (isOpen) {
+        allItems.forEach((other) => {
+          if (other !== item) {
+            other.classList.remove("expanded");
+            other.classList.remove("relative", "z-10");
+            const op = other.querySelector(".command-panel");
+            const oi = other.querySelector(".expand-icon");
+            if (op) op.classList.add("hidden");
+            if (oi) oi.style.transform = "";
+          }
+        });
+        if (!mdContent.textContent) {
+          mdContent.textContent = cmd.markdown;
+        }
+        panel.classList.remove("hidden");
+        item.classList.add("expanded", "relative", "z-10");
+        expandIcon.style.transform = "rotate(180deg)";
+        selectRuntime(runtimes[0]);
+        renderCommand();
+      } else {
+        panel.classList.add("hidden");
+        item.classList.remove("expanded", "relative", "z-10");
+        expandIcon.style.transform = "";
+        closeModelDropdown();
+      }
+    });
+
+    selectRuntime(runtimes[0]);
+    renderCommand();
+  });
+
+  function getFilteredItems() {
+    const query = searchInput.value.toLowerCase().trim();
+    return allItems.filter((item) => {
+      const name = item.dataset.commandName || "";
+      const desc = item.dataset.commandDesc || "";
+      const cat = item.dataset.commandCategory || "";
+      const catMatch = activeCategory === "all" || cat === activeCategory;
+      const queryMatch = !query || name.includes(query) || desc.includes(query);
+      return catMatch && queryMatch;
+    });
+  }
+
+  function applyView() {
+    const list = document.getElementById("command-list");
+    if (activeView === "grid") {
+      list.classList.remove("space-y-1.5");
+      list.classList.add("grid", "grid-cols-1", "sm:grid-cols-2", "gap-2");
+    } else {
+      list.classList.remove("grid", "grid-cols-1", "sm:grid-cols-2", "gap-2");
+      list.classList.add("space-y-1.5");
+    }
+  }
+
+  function applyLazyLoad() {
+    const filtered = getFilteredItems();
+    let shown = 0;
+    filtered.forEach((item) => {
+      if (shown < visibleCount) {
+        item.style.display = "";
+        shown++;
+      } else {
+        item.style.display = "none";
+      }
+    });
+
+    const hasMore = filtered.length > visibleCount;
+    showMoreWrap.classList.toggle("hidden", !hasMore);
+    noResults.classList.toggle("hidden", filtered.length > 0);
+    applyView();
+  }
+
+  searchInput.focus();
+
+  searchInput.addEventListener("input", () => {
+    visibleCount = PAGE_SIZE;
+    applyLazyLoad();
+  });
+
+  showMoreBtn.addEventListener("click", () => {
+    visibleCount += PAGE_SIZE;
+    applyLazyLoad();
+  });
+
+  document.querySelectorAll(".cat-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      activeCategory = pill.dataset.category;
+      visibleCount = PAGE_SIZE;
+
+      document.querySelectorAll(".cat-pill").forEach((p) => {
+        const isActive = p.dataset.category === activeCategory;
+        p.classList.toggle("border-text", isActive);
+        p.classList.toggle("bg-text", isActive);
+        p.classList.toggle("text-bg", isActive);
+        p.classList.toggle("border-border", !isActive);
+        p.classList.toggle("bg-surface", !isActive);
+        p.classList.toggle("text-text-muted", !isActive);
+      });
+
+      applyLazyLoad();
+    });
+  });
+
+  document.querySelectorAll(".view-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeView = btn.dataset.view;
+      document.querySelectorAll(".view-btn").forEach((b) => {
+        const isActive = b.dataset.view === activeView;
+        b.classList.toggle("bg-text", isActive);
+        b.classList.toggle("text-bg", isActive);
+        b.classList.toggle("text-text-dim", !isActive);
+      });
+      applyView();
+    });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".model-dropdown")) {
+      document.querySelectorAll(".model-options").forEach((d) => d.classList.add("hidden"));
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "/" && document.activeElement !== searchInput) {
+      e.preventDefault();
+      searchInput.focus();
+    }
+    if (e.key === "Escape" && document.activeElement === searchInput) {
+      searchInput.value = "";
+      visibleCount = PAGE_SIZE;
+      applyLazyLoad();
+      searchInput.blur();
+    }
+  });
+
+  // Preload brand icon SVGs into window for model trigger icon
+  applyLazyLoad();
+</script>
