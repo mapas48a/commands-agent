@@ -1,5 +1,12 @@
 ---
-import { commands } from "../data/config";
+import github from "../assets/icons/github.svg?raw";
+
+interface Props {
+  count: number;
+}
+
+const { count } = Astro.props;
+const repoUrl = "https://github.com/mapas48a/commands-agent";
 ---
 
 <header class="border-b border-border bg-bg/80 backdrop-blur-sm sticky top-0 z-50">
@@ -8,9 +15,53 @@ import { commands } from "../data/config";
       <span class="text-text">commands</span><span class="text-text-dim">.</span><span class="text-text-muted">agent</span>
     </span>
     <div class="flex items-center gap-2 text-xs font-mono text-text-dim">
-      <span>{commands.length} commands</span>
+      <span>{count} commands</span>
       <span class="text-border">|</span>
       <span class="text-text-muted">v1.0</span>
+      <a
+        href={repoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="GitHub repository"
+        class="ml-1 inline-flex items-center gap-2 rounded-md border border-border bg-surface px-2 py-1 text-text-muted hover:text-text hover:border-border-hover transition-colors"
+      >
+        <span class="gh-icon w-3.5 h-3.5 inline-flex items-center justify-center" set:html={github}></span>
+        <span class="hidden sm:inline">GitHub</span>
+        <span class="inline-flex items-center gap-1 text-text-dim">
+          <span class="gh-stars">★</span>
+          <span class="gh-stars-count">…</span>
+        </span>
+      </a>
     </div>
   </div>
 </header>
+
+<script>
+  // Carga perezosamente el conteo de stars de GitHub. Si falla, no rompe nada.
+  (() => {
+    const repo = "mapas48a/commands-agent";
+    const url = `https://api.github.com/repos/${repo}`;
+    const els = document.querySelectorAll<HTMLElement>(".gh-stars-count");
+    if (!els.length) return;
+
+    const setText = (n: number) => {
+      const txt = n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, "") + "k" : String(n);
+      els.forEach((el) => (el.textContent = txt));
+    };
+
+    const cached = localStorage.getItem("gh-stars:" + repo);
+    if (cached) {
+      const n = Number(cached);
+      if (!Number.isNaN(n)) setText(n);
+    }
+
+    fetch(url, { headers: { Accept: "application/vnd.github+json" } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data || typeof data.stargazers_count !== "number") return;
+        localStorage.setItem("gh-stars:" + repo, String(data.stargazers_count));
+        setText(data.stargazers_count);
+      })
+      .catch(() => {});
+  })();
+</script>

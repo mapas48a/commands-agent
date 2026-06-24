@@ -12,6 +12,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "@tailwindcss/vite": "^4.3.1",
     "astro": "^7.0.2",
     "lucide-static": "^1.21.0",

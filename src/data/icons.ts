@@ -13,6 +13,7 @@ import deepseek from "../assets/icons/deepseek.svg?raw";
 import meta from "../assets/icons/meta.svg?raw";
 import groq from "../assets/icons/groq.svg?raw";
 import google from "../assets/icons/google.svg?raw";
+import antigravity from "../assets/icons/antigravity.svg?raw";
 
 export const iconRegistry: Record<string, string> = {
   npm,
@@ -30,4 +31,5 @@ export const iconRegistry: Record<string, string> = {
   meta,
   groq,
   google,
+  antigravity,
 };

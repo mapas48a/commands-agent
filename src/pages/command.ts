@@ -1,19 +1,15 @@
 import type { APIRoute } from "astro";
-import {
-  commands,
-  models as allModels,
-  runtimes,
-  type Command,
-  type Runtime,
-} from "../data/config";
+import { agentCLIs, runtimes, type AgentCLI, type Runtime } from "../data/config";
+import { turso } from "../lib/turso";
 
 export const prerender = false;
 
 interface CommandPayload {
-  category: string;
-  command: string;
-  runtime: string;
   agent: string;
+  command: string;
+  content: number[];
+  contentEncoding: "bytes";
+  runtime: string;
   model: string;
   executable: string;
   args: string[];
@@ -31,40 +27,143 @@ function json<T>(data: T, status = 200): Response {
   });
 }
 
-function findCommand(
-  categoryId: string,
-  commandId: string
-): Command | undefined {
-  return commands.find(
-    (cmd) =>
-      cmd.category === categoryId && (cmd.id === commandId || cmd.name === commandId)
-  );
-}
-
 function findRuntime(runtimeId: string): Runtime | undefined {
   return runtimes.find((r) => r.id === runtimeId);
 }
 
-function resolveModel(command: Command, requestedModel: string): string | undefined {
-  const commandModels = command.models ?? allModels.map((m) => m.id);
-  if (requestedModel && commandModels.includes(requestedModel)) {
-    return requestedModel;
-  }
-  return commandModels[0];
+function findAgentCLI(agentId: string): AgentCLI | undefined {
+  return agentCLIs.find((a) => a.id === agentId);
 }
 
-export const GET: APIRoute = ({ url }) => {
-  const category = url.searchParams.get("category") ?? "";
-  const commandId = url.searchParams.get("command") ?? "";
-  const runtimeId = url.searchParams.get("runtime") ?? "bunx";
-  const agentHint = url.searchParams.get("agent") ?? "";
-  const requestedModel = url.searchParams.get("model") ?? "";
+function findRuntimeFromToken(token: string): Runtime | undefined {
+  return runtimes.find((r) => r.prefix.trim().split(/\s+/)[0] === token);
+}
 
-  if (!category || !commandId) {
+function findAgentCLIFromPackage(packageName: string): AgentCLI | undefined {
+  return agentCLIs.find((a) => a.package === packageName || a.id === packageName);
+}
+
+function parseCommandLine(input: string): {
+  agent: string;
+  command: string;
+  runtime: string;
+  model: string;
+} {
+  const parts = input.trim().split(/\s+/);
+  const runtime = findRuntimeFromToken(parts[0] ?? "");
+  const agent = findAgentCLIFromPackage(parts[1] ?? "");
+  const command = parts.find((part) => part.startsWith("/")) ?? "";
+  const modelFlagIndex = parts.findIndex((part) => part === "--model");
+
+  return {
+    agent: agent?.id ?? "",
+    command,
+    runtime: runtime?.id ?? "bunx",
+    model: modelFlagIndex >= 0 ? parts[modelFlagIndex + 1] ?? "" : "",
+  };
+}
+
+function normalizeCommandId(command: string): string {
+  return command.replace(/^\/+/, "");
+}
+
+function bytesFromContent(content: unknown): number[] {
+  if (typeof content === "string") {
+    return Array.from(new TextEncoder().encode(content));
+  }
+
+  if (content instanceof ArrayBuffer) {
+    return Array.from(new Uint8Array(content));
+  }
+
+  if (ArrayBuffer.isView(content)) {
+    return Array.from(new Uint8Array(content.buffer, content.byteOffset, content.byteLength));
+  }
+
+  return [];
+}
+
+async function getCommandContent(command: string, agentId?: string): Promise<number[] | undefined> {
+  const commandId = normalizeCommandId(command);
+
+  if (agentId) {
+    const variantResult = await turso.execute({
+      sql: `
+        SELECT cv.content
+        FROM command_variants cv
+        JOIN commands c ON c.id = cv.command_id
+        WHERE (c.slug = ? OR c.name = ?) AND cv.agent_cli = ?
+        LIMIT 1
+      `,
+      args: [commandId, command, agentId],
+    });
+
+    const variantContent = variantResult.rows[0]?.content;
+    if (variantContent) {
+      return bytesFromContent(variantContent);
+    }
+  }
+
+  const result = await turso.execute({
+    sql: `
+      SELECT content
+      FROM commands
+      WHERE slug = ? OR name = ?
+      LIMIT 1
+    `,
+    args: [commandId, command],
+  });
+
+  const content = result.rows[0]?.content;
+  if (!content) {
+    return undefined;
+  }
+
+  return bytesFromContent(content);
+}
+
+function getRequestParams(url: URL): {
+  agentId: string;
+  command: string;
+  runtimeId: string;
+  model: string;
+} {
+  const commandLine =
+    url.searchParams.get("request") ??
+    url.searchParams.get("q") ??
+    url.searchParams.get("commandLine");
+
+  if (commandLine) {
+    const parsed = parseCommandLine(commandLine);
+
+    return {
+      agentId: parsed.agent,
+      command: parsed.command,
+      runtimeId: parsed.runtime,
+      model: parsed.model,
+    };
+  }
+
+  return {
+    agentId: url.searchParams.get("agent") ?? "",
+    command: url.searchParams.get("command") ?? "",
+    runtimeId: url.searchParams.get("runtime") ?? "bunx",
+    model: url.searchParams.get("model") ?? "",
+  };
+}
+
+async function handleCommandRequest(url: URL): Promise<Response> {
+  const { agentId, command, runtimeId, model } = getRequestParams(url);
+
+  if (!agentId || !command) {
     return json<ErrorPayload>(
-      { error: "Missing category/command path parameters." },
+      { error: "Missing agent/command parameters." },
       400
     );
+  }
+
+  if (!model) {
+    return json<ErrorPayload>({ error: "Missing model parameter." }, 400);
   }
 
   const runtime = findRuntime(runtimeId);
@@ -77,39 +176,63 @@ export const GET: APIRoute = ({ url }) => {
     );
   }
 
-  const command = findCommand(category, commandId);
-  if (!command) {
+  const agent = findAgentCLI(agentId);
+  if (!agent) {
     return json<ErrorPayload>(
-      { error: `Command "${category}/${commandId}" not found.` },
-      404
-    );
-  }
-
-  const modelId = resolveModel(command, requestedModel);
-  if (!modelId) {
-    return json<ErrorPayload>(
-      { error: `Command "${command.id}" has no configured models.` },
+      {
+        error: `Unknown agent "${agentId}". Available: ${agentCLIs.map((a) => a.id).join(", ")}.`,
+      },
       400
     );
   }
 
-  const prefixParts = runtime.prefix.trim().split(/\s+/);
-  const packageArg = command.agentPackage;
-  const modelFlag = command.modelFlag;
-  const args = [...prefixParts, packageArg, modelFlag, modelId];
+  const content = await getCommandContent(command, agentId);
+  if (!content) {
+    return json<ErrorPayload>({ error: `Command "${command}" was not found.` }, 404);
+  }
 
-  const display = `${runtime.prefix}${packageArg} ${modelFlag} ${modelId}`.trim();
+  const prefixParts = runtime.prefix.trim().split(/\s+/);
+  const args = [
+    ...prefixParts,
+    agent.package,
+    command,
+    agent.modelFlag,
+    model,
+  ];
+
+  const display = `${runtime.prefix}${agent.package} ${command} ${agent.modelFlag} ${model}`.trim();
 
   const payload: CommandPayload = {
-    category,
-    command: commandId,
+    agent: agentId,
+    command,
+    content,
+    contentEncoding: "bytes",
     runtime: runtime.id,
-    agent: agentHint || packageArg,
-    model: modelId,
+    model,
     executable: args[0],
     args: args.slice(1),
     display,
   };
 
   return json(payload);
+}
+
+export const GET: APIRoute = ({ url }) => handleCommandRequest(url);
+
+export const POST: APIRoute = async ({ request, url }) => {
+  const contentType = request.headers.get("Content-Type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    const body = (await request.json()) as { request?: string };
+    if (body.request) {
+      url.searchParams.set("request", body.request);
+    }
+  } else {
+    const body = await request.text();
+    if (body.trim()) {
+      url.searchParams.set("request", body);
+    }
+  }
+
+  return handleCommandRequest(url);
 };

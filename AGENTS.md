@@ -10,8 +10,10 @@ No hay backend persistente. Astro components + Tailwind v4. El sitio es mayormen
 - El buscador principal (tipo skills.sh) filtra comandos por nombre/categoría/contenido
 - Al hacer click en un comando se expande un panel que muestra:
   1. El contenido completo del `.md` (el prompt del comando)
-  2. Un **selector compacto**: runtime (`npx`/`bunx`/`pnpx`/`deno`) + modelo
+  2. Un **selector compacto**: runtime (`npx`/`bunx`/`pnpx`/`deno`) + agent CLI (opencode, claude-code, codex, antigravity) + modelo
   3. El comando final ensamblado + botón de copiar
+- El formato del comando es: `{runtime} {agent-package} /{command-name} {model-flag} {model}`
+  - Ejemplo: `bunx opencode-ai /github-push --model claude-sonnet-4-20250514`
 - Iconos de categorías/UI: **Lucide** (`lucide-static`, SVGs cached en `src/assets/lucide/`)
 - Iconos de marcas: **svgl.app** (SVGs cached en `src/assets/icons/`)
 
@@ -31,7 +33,7 @@ No hay backend persistente. Astro components + Tailwind v4. El sitio es mayormen
 - `src/components/` — `.astro` components (Header, Icon, CommandPanel, etc.)
 - `src/layouts/Layout.astro` — single HTML shell; import `../styles/global.css` here
 - `src/styles/global.css` — `@import "tailwindcss";` + `@theme` design tokens (dark theme)
-- `src/data/config.ts` — definición de categorías, runtimes, y comandos (con contenido markdown inline)
+- `src/data/config.ts` — definición de categorías, runtimes, agentes CLI (`agentCLIs`) y comandos
 - `src/pages/command.ts` — endpoint server-side que ensambla el comando ejecutable para el CLI
 - `script/cli/` — CLI local (`commands-agent`) que consulta `/command` y ejecuta el agente
 - `src/data/icons.ts` — registry de iconos de marca (svgl.app, cached como `?raw` imports)

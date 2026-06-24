@@ -2,8 +2,12 @@
 import Layout from "../layouts/Layout.astro";
 import Header from "../components/Header.astro";
 import Icon from "../components/Icon.astro";
-import { categories, runtimes, providers, models, commands } from "../data/config";
+import { runtimes, agentCLIs, providers, models } from "../data/config";
 import { iconRegistry } from "../data/icons";
+import { getCategories, getCommands } from "../lib/queries";
+
+const categories = await getCategories();
+const commands = await getCommands();
 
 function modelsByProvider(providerId: string): typeof models {
   return models.filter((m) => m.provider === providerId);
@@ -11,14 +15,24 @@ function modelsByProvider(providerId: string): typeof models {
 ---
 
 <Layout title="commands.agent — Slash command marketplace">
-  <Header />
+  <Header count={commands.length} />
 
   <main class="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8">
     <section class="mb-5">
-      <h1 class="text-2xl sm:text-3xl tracking-tight" style="font-weight: 400;">
-        <span class="text-text">commands</span><span class="text-text-dim">.</span><span class="text-text-muted">agent</span>
+      <h1
+        class="text-[1.6rem] sm:text-3xl md:text-4xl tracking-tight leading-[1.1] flex flex-wrap items-baseline gap-x-2 gap-y-1"
+        style="font-weight: 500;"
+      >
+        <span class="text-text">Add</span>
+        <span class="font-mono text-text-muted bg-surface border border-border rounded-md px-1.5 py-0.5 text-[0.85em]">/commands</span>
+        <span class="text-text-muted">to your agent-cli</span>
+        <span class="text-text-muted">more</span>
+        <span
+          class="font-mono text-accent"
+          style="font-weight: 700; letter-spacing: -0.02em; font-size: 1.15em;"
+        >faster</span>
       </h1>
-      <p class="mt-1 font-mono text-sm text-text-muted">
+      <p class="mt-2 font-mono text-sm text-text-muted">
         Marketplace de slash-commands para tu agente de IA
       </p>
     </section>
@@ -62,12 +76,7 @@ function modelsByProvider(providerId: string): typeof models {
         />
         <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
           <div class="flex rounded-md border border-border overflow-hidden" data-view-toggle>
-            <button
-              type="button"
-              data-view="list"
-              class="view-btn px-2 py-1 transition-colors bg-text text-bg"
-              aria-label="List view"
-            >
+            <button type="button" data-view="list" class="view-btn px-2 py-1 transition-colors bg-text text-bg" aria-label="List view">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round" />
                 <line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round" />
@@ -77,12 +86,7 @@ function modelsByProvider(providerId: string): typeof models {
                 <line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round" />
               </svg>
             </button>
-            <button
-              type="button"
-              data-view="grid"
-              class="view-btn px-2 py-1 transition-colors text-text-dim hover:text-text"
-              aria-label="Grid view"
-            >
+            <button type="button" data-view="grid" class="view-btn px-2 py-1 transition-colors text-text-dim hover:text-text" aria-label="Grid view">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="7" height="7" rx="1" />
                 <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -107,8 +111,6 @@ function modelsByProvider(providerId: string): typeof models {
               data-command-name={cmd.name.toLowerCase()}
               data-command-category={cmd.category}
               data-command-desc={cmd.description.toLowerCase()}
-              data-agent-package={cmd.agentPackage}
-              data-model-flag={cmd.modelFlag}
             >
               <div class="command-header flex items-center gap-3 px-4 py-3">
                 <div class="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-bg">
@@ -140,8 +142,8 @@ function modelsByProvider(providerId: string): typeof models {
                   <pre class="md-content text-xs font-mono text-text-muted whitespace-pre-wrap break-words max-h-80 overflow-y-auto leading-relaxed"></pre>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-2 mt-3">
-                  <div class="flex items-center gap-1">
+                <div class="mt-3 flex flex-col gap-2">
+                  <div class="flex items-center gap-1.5 flex-wrap">
                     {runtimes.map((rt) => (
                       <button
                         type="button"
@@ -154,8 +156,29 @@ function modelsByProvider(providerId: string): typeof models {
                     ))}
                   </div>
 
-                  <div class="h-4 w-px bg-border mx-0.5"></div>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    {agentCLIs.map((ac) => {
+                      const hasVariant = cmd.variants.some((v) => v.agentCli === ac.id);
+                      return (
+                        <button
+                          type="button"
+                          class={`agent-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all ${hasVariant ? "" : "opacity-40 cursor-not-allowed"}`}
+                          data-agent-id={ac.id}
+                          data-agent-package={ac.package}
+                          data-agent-model-flag={ac.modelFlag}
+                          data-has-variant={hasVariant ? "true" : "false"}
+                          title={hasVariant ? ac.name : `${ac.name} — Coming soon`}
+                        >
+                          <Icon name={ac.icon} type={ac.iconType} class="w-3.5 h-3.5" />
+                          <span>{ac.name}</span>
+                          {!hasVariant && <span class="text-[9px] text-text-dim ml-0.5">soon</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
+                <div class="mt-2 flex items-center gap-2">
                   <div class="relative model-dropdown">
                     <button
                       type="button"
@@ -232,16 +255,19 @@ function modelsByProvider(providerId: string): typeof models {
     </section>
 
     <footer class="mt-12 pt-6 border-t border-border text-center text-xs font-mono text-text-dim">
-      <p>icons by <a href="https://svgl.app" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">svgl.app</a> + <a href="https://lucide.dev" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">lucide</a></p>
+      <p>construido con <span class="text-text-muted">♥</span> by <a href="https://github.com/mapas48a" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">mapas48a</a></p>
+      <p class="mt-1">icons by <a href="https://svgl.app" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">svgl.app</a> + <a href="https://lucide.dev" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">lucide</a></p>
     </footer>
   </main>
 </Layout>
 
-<script is:inline define:vars={{ runtimes, commands, models, providers, iconRegistry }}>
+<script is:inline define:vars={{ runtimes, agentCLIs, commands, models, providers, iconRegistry }}>
   const providerMap = {};
   providers.forEach((p) => (providerMap[p.id] = p));
   const modelMap = {};
   models.forEach((m) => (modelMap[m.id] = m));
+  const agentCLIMap = {};
+  agentCLIs.forEach((a) => (agentCLIMap[a.id] = a));
 
   function escapeHtml(str) {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -275,26 +301,48 @@ function modelsByProvider(providerId: string): typeof models {
     const modelOptions = item.querySelector(".model-options");
 
     let activeRuntime = runtimes[0];
+    let activeAgent = agentCLIs.find((a) => cmd.variants.some((v) => v.agentCli === a.id)) ?? agentCLIs[0];
     let activeModel = null;
     let isOpen = false;
     let modelDropdownOpen = false;
 
+    function getVariantContent(agentId) {
+      const variant = cmd.variants.find((v) => v.agentCli === agentId);
+      return variant ? variant.content : null;
+    }
+
+    function renderMdContent() {
+      const variantContent = getVariantContent(activeAgent.id);
+      if (variantContent) {
+        mdContent.textContent = variantContent;
+        mdContent.classList.remove("text-text-dim");
+        mdContent.classList.add("text-text-muted");
+      } else {
+        mdContent.textContent = "This command is not yet available for " + activeAgent.name + ". Coming soon!";
+        mdContent.classList.remove("text-text-muted");
+        mdContent.classList.add("text-text-dim");
+      }
+    }
+
     function renderCommand() {
       const prefix = activeRuntime.prefix.trim();
+      const slash = cmd.name;
       if (activeModel) {
         const html =
           '<span class="text-text-dim">$ </span>' +
           '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(cmd.agentPackage) + '</span> ' +
-          '<span class="text-text-dim">' + escapeHtml(cmd.modelFlag) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
+          '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
           '<span class="text-text">' + escapeHtml(activeModel.id) + '</span>';
         commandOutput.innerHTML = html;
       } else {
         const html =
           '<span class="text-text-dim">$ </span>' +
           '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(cmd.agentPackage) + '</span> ' +
-          '<span class="text-text-dim">' + escapeHtml(cmd.modelFlag) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
+          '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
           '<span class="text-text-dim">Select model ↓</span>';
         commandOutput.innerHTML = html;
       }
@@ -302,10 +350,11 @@ function modelsByProvider(providerId: string): typeof models {
 
     function getCommandText() {
       const prefix = activeRuntime.prefix.trim();
+      const slash = cmd.name;
       if (activeModel) {
-        return prefix + " " + cmd.agentPackage + " " + cmd.modelFlag + " " + activeModel.id;
+        return prefix + " " + activeAgent.package + " " + slash + " " + activeAgent.modelFlag + " " + activeModel.id;
       }
-      return prefix + " " + cmd.agentPackage + " " + cmd.modelFlag + ' "<model>"';
+      return prefix + " " + activeAgent.package + " " + slash + " " + activeAgent.modelFlag + ' "<model>"';
     }
 
     function selectRuntime(rt) {
@@ -318,6 +367,22 @@ function modelsByProvider(providerId: string): typeof models {
         btn.classList.toggle("border-border", !isActive);
         btn.classList.toggle("text-text-muted", !isActive);
       });
+      renderCommand();
+    }
+
+    function selectAgent(ac) {
+      const hasVariant = cmd.variants.some((v) => v.agentCli === ac.id);
+      if (!hasVariant) return;
+      activeAgent = ac;
+      item.querySelectorAll(".agent-btn").forEach((btn) => {
+        const isActive = btn.dataset.agentId === ac.id;
+        btn.classList.toggle("border-text", isActive);
+        btn.classList.toggle("bg-text", isActive);
+        btn.classList.toggle("text-bg", isActive);
+        btn.classList.toggle("border-border", !isActive);
+        btn.classList.toggle("text-text-muted", !isActive);
+      });
+      renderMdContent();
       renderCommand();
     }
 
@@ -359,11 +424,7 @@ function modelsByProvider(providerId: string): typeof models {
 
     modelTrigger.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (modelDropdownOpen) {
-        closeModelDropdown();
-      } else {
-        openModelDropdown();
-      }
+      modelDropdownOpen ? closeModelDropdown() : openModelDropdown();
     });
 
     item.querySelectorAll(".model-option").forEach((opt) => {
@@ -379,6 +440,15 @@ function modelsByProvider(providerId: string): typeof models {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         if (rt) selectRuntime(rt);
+      });
+    });
+
+    item.querySelectorAll(".agent-btn").forEach((btn) => {
+      const ac = agentCLIMap[btn.dataset.agentId];
+      const hasVariant = btn.dataset.hasVariant === "true";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (ac && hasVariant) selectAgent(ac);
       });
     });
 
@@ -409,21 +479,19 @@ function modelsByProvider(providerId: string): typeof models {
       if (isOpen) {
         allItems.forEach((other) => {
           if (other !== item) {
-            other.classList.remove("expanded");
-            other.classList.remove("relative", "z-10");
+            other.classList.remove("expanded", "relative", "z-10");
             const op = other.querySelector(".command-panel");
             const oi = other.querySelector(".expand-icon");
             if (op) op.classList.add("hidden");
             if (oi) oi.style.transform = "";
           }
         });
-        if (!mdContent.textContent) {
-          mdContent.textContent = cmd.markdown;
-        }
+        renderMdContent();
         panel.classList.remove("hidden");
         item.classList.add("expanded", "relative", "z-10");
         expandIcon.style.transform = "rotate(180deg)";
         selectRuntime(runtimes[0]);
+        selectAgent(activeAgent);
         renderCommand();
       } else {
         panel.classList.add("hidden");
@@ -434,6 +502,7 @@ function modelsByProvider(providerId: string): typeof models {
     });
 
     selectRuntime(runtimes[0]);
+    selectAgent(activeAgent);
     renderCommand();
   });
 
@@ -541,6 +610,5 @@ function modelsByProvider(providerId: string): typeof models {
     }
   });
 
-  // Preload brand icon SVGs into window for model trigger icon
   applyLazyLoad();
 </script>

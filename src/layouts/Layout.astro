@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Background from "../components/Background.astro";
 
 interface Props {
   title?: string;
@@ -31,6 +32,7 @@ const { title = "commands.agent" } = Astro.props;
   <body
     class="bg-bg text-text font-sans antialiased min-h-screen flex flex-col"
   >
+    <Background />
     <slot />
   </body>
 </html>
