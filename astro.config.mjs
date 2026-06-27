@@ -5,9 +5,9 @@ import netlify from '@astrojs/netlify';
 import tailwindcss from '@tailwindcss/vite';
 
 // Production URL. Override at build time with:
-//   SITE_URL=https://commands.agent.dev bun build
+//   SITE_URL=https://commands-agent.netlify.app bun build
 const site =
-  process.env.SITE_URL ?? 'http://localhost:4321';
+  process.env.SITE_URL ?? 'https://commands-agent.netlify.app';
 
 // https://astro.build/config
 export default defineConfig({

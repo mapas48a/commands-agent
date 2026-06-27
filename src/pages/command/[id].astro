@@ -270,6 +270,7 @@ function modelsByProvider(providerId: string) {
       agentCLIs.find((a) => cmd.variants.some((v) => v.agentCli === a.id)) ??
       agentCLIs[0];
     let activeModel = null;
+    const cliPackage = "commands-agent-cli";
     let modelDropdownOpen = false;
 
     function getVariantContent(agentId) {
@@ -300,7 +301,8 @@ function modelsByProvider(providerId: string) {
         commandOutput.innerHTML =
           '<span class="text-text-dim">$ </span>' +
           '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(cliPackage) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.id) + '</span> ' +
           '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
           '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
           '<span class="text-text">' + escapeHtml(activeModel.id) + '</span>';
@@ -308,7 +310,8 @@ function modelsByProvider(providerId: string) {
         commandOutput.innerHTML =
           '<span class="text-text-dim">$ </span>' +
           '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(cliPackage) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.id) + '</span> ' +
           '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
           '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
           '<span class="text-text-dim">Select model ↓</span>';
@@ -322,7 +325,9 @@ function modelsByProvider(providerId: string) {
         return (
           prefix +
           " " +
-          activeAgent.package +
+          cliPackage +
+          " " +
+          activeAgent.id +
           " " +
           slash +
           " " +
@@ -334,12 +339,14 @@ function modelsByProvider(providerId: string) {
       return (
         prefix +
         " " +
-        activeAgent.package +
+        cliPackage +
         " " +
-        slash +
-        " " +
-        activeAgent.modelFlag +
-        ' "<model>"'
+        activeAgent.id +
+          " " +
+          slash +
+          " " +
+          activeAgent.modelFlag +
+          ' "<model>"'
       );
     }
 

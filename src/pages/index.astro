@@ -316,11 +316,12 @@ function modelsByProvider(providerId: string): typeof models {
     const modelTriggerIcon = item.querySelector(".model-trigger-icon");
     const modelOptions = item.querySelector(".model-options");
 
-    let activeRuntime = runtimes[0];
-    let activeAgent = agentCLIs.find((a) => cmd.variants.some((v) => v.agentCli === a.id)) ?? agentCLIs[0];
-    let activeModel = null;
-    let isOpen = false;
-    let modelDropdownOpen = false;
+  let activeRuntime = runtimes[0];
+  let activeAgent = agentCLIs.find((a) => cmd.variants.some((v) => v.agentCli === a.id)) ?? agentCLIs[0];
+  let activeModel = null;
+  const cliPackage = "commands-agent-cli";
+  let isOpen = false;
+  let modelDropdownOpen = false;
 
     function getVariantContent(agentId) {
       const variant = cmd.variants.find((v) => v.agentCli === agentId);
@@ -347,7 +348,8 @@ function modelsByProvider(providerId: string): typeof models {
         const html =
           '<span class="text-text-dim">$ </span>' +
           '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(cliPackage) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.id) + '</span> ' +
           '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
           '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
           '<span class="text-text">' + escapeHtml(activeModel.id) + '</span>';
@@ -356,7 +358,8 @@ function modelsByProvider(providerId: string): typeof models {
         const html =
           '<span class="text-text-dim">$ </span>' +
           '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(cliPackage) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.id) + '</span> ' +
           '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
           '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
           '<span class="text-text-dim">Select model ↓</span>';
@@ -368,9 +371,9 @@ function modelsByProvider(providerId: string): typeof models {
       const prefix = activeRuntime.prefix.trim();
       const slash = cmd.name;
       if (activeModel) {
-        return prefix + " " + activeAgent.package + " " + slash + " " + activeAgent.modelFlag + " " + activeModel.id;
+        return prefix + " " + cliPackage + " " + activeAgent.id + " " + slash + " " + activeAgent.modelFlag + " " + activeModel.id;
       }
-      return prefix + " " + activeAgent.package + " " + slash + " " + activeAgent.modelFlag + ' "<model>"';
+      return prefix + " " + cliPackage + " " + activeAgent.id + " " + slash + " " + activeAgent.modelFlag + ' "<model>"';
     }
 
     function selectRuntime(rt) {

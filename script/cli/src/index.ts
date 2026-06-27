@@ -38,7 +38,7 @@ interface InstallTarget {
   note: string;
 }
 
-const DEFAULT_HOST = "http://localhost:4321";
+const DEFAULT_HOST = "https://commands-agent.netlify.app";
 const DEFAULT_RUNTIME = "bunx";
 
 const PALETTE = {

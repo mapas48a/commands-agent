@@ -16,7 +16,7 @@ commands-agent <agent> <slash-command> [model] [options]
 
 ### Options
 
-- `--host <url>` — Base URL of the command server (default: `http://localhost:4321`)
+- `--host <url>` — Base URL of the command server (default: `https://commands-agent.netlify.app`)
 - `--config-dir <path>` — Override the base config directory used to install files
 - `--force` — Overwrite an existing installed command
 - `--dry-run` — Print the target file without writing it
@@ -55,4 +55,4 @@ bun run typecheck
 bun run src/index.ts opencode /github-push --dry-run
 ```
 
-Make sure the Astro dev server is running (`bun dev` in the project root) so the `/command` endpoint is available. The endpoint reads commands from `src/data/config.ts`; no Turso database is required for local development.
+For local development, point `--host` at `http://localhost:4321`. The endpoint reads commands from `src/data/config.ts`; no Turso database is required.
