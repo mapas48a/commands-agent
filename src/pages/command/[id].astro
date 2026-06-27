@@ -1,0 +1,487 @@
+---
+export const prerender = true;
+import Layout from "../../layouts/Layout.astro";
+import Header from "../../components/Header.astro";
+import Icon from "../../components/Icon.astro";
+import { getCategories, getCommands } from "../../lib/queries";
+import {
+  runtimes,
+  agentCLIs,
+  providers,
+  models,
+} from "../../data/config";
+import { iconRegistry } from "../../data/icons";
+
+export async function getStaticPaths() {
+  const commands = await getCommands();
+  return commands.map((cmd) => ({
+    params: { id: cmd.id },
+    props: { cmd },
+  }));
+}
+
+const { cmd } = Astro.props;
+const categories = await getCategories();
+const cat = categories.find((c) => c.id === cmd.category);
+
+const title = `${cmd.name} — slash command para agentes de IA | commands.agent`;
+const description = cmd.description;
+const canonicalOverride = undefined;
+
+const supportedAgents = agentCLIs.filter((ac) =>
+  cmd.variants.some((v) => v.agentCli === ac.id)
+);
+
+const allCommands = await getCommands();
+
+const site = Astro.site?.href.replace(/\/$/, "") ?? "http://localhost:4321";
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "commands.agent", item: site },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: cat?.name ?? "Comandos",
+      item: `${site}/#cat-${cmd.category}`,
+    },
+    {
+      "@type": "ListItem",
+      position: 3,
+      name: cmd.name,
+      item: `${site}/command/${cmd.id}`,
+    },
+  ],
+};
+const techArticleJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  headline: cmd.name,
+  description: cmd.description,
+  url: `${site}/command/${cmd.id}`,
+  inLanguage: "es",
+  author: { "@type": "Organization", name: "commands.agent" },
+  publisher: { "@id": `${site}/#organization` },
+};
+
+function modelsByProvider(providerId: string) {
+  return models.filter((m) => m.provider === providerId);
+}
+---
+
+<Layout title={title} description={description} canonical={canonicalOverride} ogType="article">
+  <Header count={allCommands.length} />
+
+  <main
+    class="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 prose-invert"
+    style="max-width: 42rem;"
+  >
+    <nav
+      class="text-xs font-mono text-text-dim mb-4 flex items-center gap-1"
+      aria-label="Breadcrumb"
+    >
+      <a href="/" class="hover:text-text transition-colors">commands.agent</a>
+      <span>/</span>
+      <span class="text-text-muted">{cmd.name}</span>
+    </nav>
+
+    <header class="mb-5 flex items-start gap-3">
+      <div class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-surface border border-border">
+        {cat && <Icon name={cat.icon} type="lucide" class="w-4 h-4" />}
+      </div>
+      <div class="min-w-0">
+        <h1 class="font-mono text-2xl sm:text-3xl tracking-tight text-text" style="font-weight: 500;">
+          {cmd.name}
+        </h1>
+        <p class="mt-1 text-sm font-mono text-text-muted">{cmd.description}</p>
+        {cat && (
+          <span class="inline-block mt-2 text-[10px] font-mono uppercase tracking-wider text-text-dim border border-border rounded-full px-2 py-0.5">
+            {cat.name}
+          </span>
+        )}
+      </div>
+    </header>
+
+    <section class="rounded-lg border border-border bg-surface p-4 mb-4">
+      <div class="text-[10px] font-mono uppercase tracking-wider text-text-dim mb-2">
+        prompt .md
+      </div>
+      <pre id="md-content" class="text-xs font-mono text-text-muted whitespace-pre-wrap break-words leading-relaxed">{cmd.markdown}</pre>
+    </section>
+
+    <div
+      id="command-panel"
+      data-command-id={cmd.id}
+      data-command-name={cmd.name}
+    >
+      <div class="mb-4 flex flex-col gap-2">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          {runtimes.map((rt) => (
+            <button
+              type="button"
+              class="runtime-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all"
+              data-runtime-prefix={rt.prefix}
+            >
+              <Icon name={rt.icon} class="w-3 h-3" />
+              <span>{rt.name}</span>
+            </button>
+          ))}
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-wrap">
+          {agentCLIs.map((ac) => {
+            const hasVariant = cmd.variants.some((v) => v.agentCli === ac.id);
+            return (
+              <button
+                type="button"
+                class={`agent-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all ${hasVariant ? "" : "opacity-40 cursor-not-allowed"}`}
+                data-agent-id={ac.id}
+                data-agent-package={ac.package}
+                data-agent-model-flag={ac.modelFlag}
+                data-has-variant={hasVariant ? "true" : "false"}
+                title={hasVariant ? ac.name : `${ac.name} — Coming soon`}
+              >
+                <Icon name={ac.icon} type={ac.iconType} class="w-3.5 h-3.5" />
+                <span>{ac.name}</span>
+                {!hasVariant && <span class="text-[9px] text-text-dim ml-0.5">soon</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div class="mb-2 flex items-center gap-2">
+        <div class="relative model-dropdown">
+          <button
+            type="button"
+            class="model-trigger flex items-center gap-1.5 bg-surface border border-border rounded-md pl-2 pr-7 py-1 text-xs font-mono text-text cursor-pointer hover:border-border-hover transition-colors"
+          >
+            <span class="model-trigger-icon flex items-center justify-center w-3.5 h-3.5 shrink-0"></span>
+            <span class="model-trigger-label truncate max-w-[160px] text-text-dim">Select model</span>
+            <svg class="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-dim pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <div class="model-options hidden absolute z-[60] mt-1 w-72 max-h-72 overflow-y-auto bg-surface border border-border rounded-lg shadow-xl left-0">
+            {providers.map((prov) => (
+              <div class="provider-group" data-provider={prov.id}>
+                <div class="flex items-center gap-2 px-3 py-1.5 sticky top-0 bg-surface border-b border-border">
+                  <Icon name={prov.icon} class="w-4 h-4" />
+                  <span class="text-[10px] font-mono uppercase tracking-wider text-text-dim">{prov.name}</span>
+                </div>
+                {modelsByProvider(prov.id).map((m) => (
+                  <button
+                    type="button"
+                    class="model-option flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs font-mono text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
+                    data-model-id={m.id}
+                    data-model-name={m.name}
+                    data-provider-id={prov.id}
+                    data-provider-name={prov.name}
+                    data-provider-icon={prov.icon}
+                  >
+                    <span class="text-text-dim w-20 truncate">{m.name}</span>
+                    <span class="text-text-dim text-[10px] flex-1 truncate">{m.id}</span>
+                    {m.context && <span class="text-text-dim text-[10px]">{m.context}</span>}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+        <code class="command-output flex-1 font-mono text-xs text-text overflow-x-auto whitespace-nowrap">
+          <span class="text-text-dim">$ </span>
+        </code>
+        <button
+          type="button"
+          class="copy-btn shrink-0 flex items-center gap-1 text-xs font-mono text-text-dim hover:text-text transition-colors px-2 py-1 rounded hover:bg-surface-hover"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          <span class="copy-label">Copy</span>
+        </button>
+      </div>
+    </div>
+
+    <section class="mt-8 text-xs font-mono text-text-dim">
+      <h2 class="text-text-muted text-sm mb-2 uppercase tracking-wider">Agentes soportados</h2>
+      <ul class="flex flex-wrap gap-2">
+        {supportedAgents.map((ac) => (
+          <li
+            class="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-surface text-xs font-mono text-text-muted"
+          >
+            <Icon name={ac.icon} type={ac.iconType} class="w-3.5 h-3.5" />
+            <span>{ac.name}</span>
+          </li>
+        ))}
+        {supportedAgents.length === 0 && (
+          <li class="text-xs font-mono text-text-dim">
+            Variantes próximamente.
+          </li>
+        )}
+      </ul>
+    </section>
+
+    <p class="text-xs font-mono text-text-dim mt-8">
+      <a href="/" class="text-text-muted hover:text-text transition-colors">← Ver todos los slash-commands</a>
+    </p>
+  </main>
+
+  <script
+    is:inline
+    type="application/ld+json"
+    set:html={JSON.stringify(breadcrumbJsonLd)}
+  />
+  <script
+    is:inline
+    type="application/ld+json"
+    set:html={JSON.stringify(techArticleJsonLd)}
+  />
+
+  <script is:inline define:vars={{ runtimes, agentCLIs, cmd, models, providers, iconRegistry }}>
+    const providerMap = {};
+    providers.forEach((p) => (providerMap[p.id] = p));
+    const modelMap = {};
+    models.forEach((m) => (modelMap[m.id] = m));
+    const agentCLIMap = {};
+    agentCLIs.forEach((a) => (agentCLIMap[a.id] = a));
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    const panel = document.getElementById("command-panel");
+    const commandOutput = panel.querySelector(".command-output");
+    const copyBtn = panel.querySelector(".copy-btn");
+    const copyLabel = panel.querySelector(".copy-label");
+    const mdContent = document.getElementById("md-content");
+    const modelTrigger = panel.querySelector(".model-trigger");
+    const modelTriggerLabel = panel.querySelector(".model-trigger-label");
+    const modelTriggerIcon = panel.querySelector(".model-trigger-icon");
+    const modelOptions = panel.querySelector(".model-options");
+
+    let activeRuntime = runtimes[0];
+    let activeAgent =
+      agentCLIs.find((a) => cmd.variants.some((v) => v.agentCli === a.id)) ??
+      agentCLIs[0];
+    let activeModel = null;
+    let modelDropdownOpen = false;
+
+    function getVariantContent(agentId) {
+      const variant = cmd.variants.find((v) => v.agentCli === agentId);
+      return variant ? variant.content : null;
+    }
+
+    function renderMdContent() {
+      const variantContent = getVariantContent(activeAgent.id);
+      if (variantContent) {
+        mdContent.textContent = variantContent;
+        mdContent.classList.remove("text-text-dim");
+        mdContent.classList.add("text-text-muted");
+      } else {
+        mdContent.textContent =
+          "This command is not yet available for " +
+          activeAgent.name +
+          ". Coming soon!";
+        mdContent.classList.remove("text-text-muted");
+        mdContent.classList.add("text-text-dim");
+      }
+    }
+
+    function renderCommand() {
+      const prefix = activeRuntime.prefix.trim();
+      const slash = cmd.name;
+      if (activeModel) {
+        commandOutput.innerHTML =
+          '<span class="text-text-dim">$ </span>' +
+          '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
+          '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeModel.id) + '</span>';
+      } else {
+        commandOutput.innerHTML =
+          '<span class="text-text-dim">$ </span>' +
+          '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(activeAgent.package) + '</span> ' +
+          '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
+          '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
+          '<span class="text-text-dim">Select model ↓</span>';
+      }
+    }
+
+    function getCommandText() {
+      const prefix = activeRuntime.prefix.trim();
+      const slash = cmd.name;
+      if (activeModel) {
+        return (
+          prefix +
+          " " +
+          activeAgent.package +
+          " " +
+          slash +
+          " " +
+          activeAgent.modelFlag +
+          " " +
+          activeModel.id
+        );
+      }
+      return (
+        prefix +
+        " " +
+        activeAgent.package +
+        " " +
+        slash +
+        " " +
+        activeAgent.modelFlag +
+        ' "<model>"'
+      );
+    }
+
+    function selectRuntime(rt) {
+      activeRuntime = rt;
+      panel.querySelectorAll(".runtime-btn").forEach((btn) => {
+        const isActive = btn.dataset.runtimePrefix === rt.prefix;
+        btn.classList.toggle("border-text", isActive);
+        btn.classList.toggle("bg-text", isActive);
+        btn.classList.toggle("text-bg", isActive);
+        btn.classList.toggle("border-border", !isActive);
+        btn.classList.toggle("text-text-muted", !isActive);
+      });
+      renderCommand();
+    }
+
+    function selectAgent(ac) {
+      const hasVariant = cmd.variants.some((v) => v.agentCli === ac.id);
+      if (!hasVariant) return;
+      activeAgent = ac;
+      panel.querySelectorAll(".agent-btn").forEach((btn) => {
+        const isActive = btn.dataset.agentId === ac.id;
+        btn.classList.toggle("border-text", isActive);
+        btn.classList.toggle("bg-text", isActive);
+        btn.classList.toggle("text-bg", isActive);
+        btn.classList.toggle("border-border", !isActive);
+        btn.classList.toggle("text-text-muted", !isActive);
+      });
+      renderMdContent();
+      renderCommand();
+    }
+
+    function selectModel(modelId) {
+      const model = modelMap[modelId];
+      if (!model) return;
+      activeModel = model;
+      const provider = providerMap[model.provider];
+
+      modelTriggerLabel.textContent =
+        model.name + " — " + model.id.split("/").pop();
+      modelTriggerLabel.classList.remove("text-text-dim");
+      modelTriggerLabel.classList.add("text-text");
+
+      modelTriggerIcon.innerHTML = "";
+      const svgCode = iconRegistry && iconRegistry[provider.icon];
+      if (svgCode) {
+        modelTriggerIcon.innerHTML = svgCode;
+      }
+
+      panel.querySelectorAll(".model-option").forEach((opt) => {
+        opt.classList.toggle("bg-surface-hover", opt.dataset.modelId === modelId);
+        opt.classList.toggle("text-text", opt.dataset.modelId === modelId);
+        opt.classList.toggle(
+          "text-text-muted",
+          opt.dataset.modelId !== modelId
+        );
+      });
+
+      closeModelDropdown();
+      renderCommand();
+    }
+
+    function openModelDropdown() {
+      modelDropdownOpen = true;
+      modelOptions.classList.remove("hidden");
+    }
+
+    function closeModelDropdown() {
+      modelDropdownOpen = false;
+      modelOptions.classList.add("hidden");
+    }
+
+    modelTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      modelDropdownOpen ? closeModelDropdown() : openModelDropdown();
+    });
+
+    panel.querySelectorAll(".model-option").forEach((opt) => {
+      opt.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectModel(opt.dataset.modelId);
+      });
+    });
+
+    panel.querySelectorAll(".runtime-btn").forEach((btn) => {
+      const prefix = btn.dataset.runtimePrefix;
+      const rt = runtimes.find((r) => r.prefix === prefix);
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (rt) selectRuntime(rt);
+      });
+    });
+
+    panel.querySelectorAll(".agent-btn").forEach((btn) => {
+      const ac = agentCLIMap[btn.dataset.agentId];
+      const hasVariant = btn.dataset.hasVariant === "true";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (ac && hasVariant) selectAgent(ac);
+      });
+    });
+
+    copyBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const cmdText = getCommandText();
+      navigator.clipboard
+        .writeText(cmdText)
+        .then(() => {
+          copyLabel.textContent = "Copied!";
+          copyBtn.classList.add("text-text");
+          setTimeout(() => {
+            copyLabel.textContent = "Copy";
+            copyBtn.classList.remove("text-text");
+          }, 2000);
+        })
+        .catch(() => {
+          const ta = document.createElement("textarea");
+          ta.value = cmdText;
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand("copy");
+          } catch {}
+          document.body.removeChild(ta);
+          copyLabel.textContent = "Copied!";
+          setTimeout(() => {
+            copyLabel.textContent = "Copy";
+          }, 2000);
+        });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".model-dropdown")) {
+        document
+          .querySelectorAll(".model-options")
+          .forEach((d) => d.classList.add("hidden"));
+        modelDropdownOpen = false;
+      }
+    });
+
+    selectRuntime(runtimes[0]);
+    selectAgent(activeAgent);
+    renderCommand();
+  </script>
+</Layout>

@@ -1,0 +1,113 @@
+name: "Solicitud de comando"
+description: "Proponer un nuevo slash-command para el marketplace"
+title: "command:'nombre-del-comando'"
+labels: ["command-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Solicitud de comando
+
+        Usa este template para proponer un nuevo slash-command para **commands.agent**.
+        El título debe seguir el formato `command:'nombre-del-comando'` (ej. `command:'github-push'`).
+
+        Revisa que el comando no exista ya en [commands.agent](https://commands.agent) antes de enviarlo.
+
+  - type: input
+    id: command-name
+    attributes:
+      label: Nombre del comando
+      description: "El slash-command con barra inicial. Ej: /github-push"
+      placeholder: "/github-push"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Categoría
+      description: "Selecciona la categoría más apropiada."
+      options:
+        - agent
+        - workflow
+        - devops
+        - database
+        - testing
+        - build
+    validations:
+      required: true
+
+  - type: input
+    id: description
+    attributes:
+      label: Descripción corta
+      description: "Una línea que describa qué hace el comando."
+      placeholder: "Stage, commit with conventional message, and push to remote"
+    validations:
+      required: true
+
+  - type: input
+    id: agents
+    attributes:
+      label: Agentes soportados
+      description: "Lista separada por comas. Opciones: opencode, claude-code, codex, antigravity."
+      placeholder: "opencode, claude-code, codex"
+    validations:
+      required: true
+
+  - type: textarea
+    id: prompt
+    attributes:
+      label: Prompt (.md)
+      description: |
+        El contenido del prompt en markdown. Sigue esta estructura:
+
+        ```markdown
+        # /command-name
+
+        ## Description
+        Breve descripción de qué hace.
+
+        ## Instructions
+        1. Paso uno.
+        2. Paso dos.
+
+        ## Notes
+        - Notas, advertencias o buenas prácticas.
+        ```
+
+        Las variantes por agente (frontmatter + body) se generan automáticamente
+        a partir de este prompt si no se especifican variantes distintas.
+      placeholder: |
+        # /github-push
+
+        ## Description
+
+        Stages all changes, generates a conventional commit message based on the diff,
+        and pushes to the current branch's remote.
+
+        ## Instructions
+
+        1. Run `git status` to see what changed.
+        2. Run `git add -A` to stage all changes.
+        3. Analyze the diff with `git diff --cached` and write a commit message using
+           the **conventional commits** format.
+        4. Commit with `git commit -m "<message>"`.
+        5. Push with `git push -u origin HEAD`.
+
+        ## Notes
+
+        - Never use `--force` unless explicitly asked.
+        ```
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Contexto adicional (opcional)
+      description: "Cualquier detalle extra: ejemplos de uso, dependencias, inspiración, etc."
+      placeholder: "Este comando está inspirado en..."
+    validations:
+      required: false

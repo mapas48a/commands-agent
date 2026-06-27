@@ -1,0 +1,40 @@
+name: Bug report
+description: "Reportar un bug en el sitio o en el CLI"
+title: "bug:"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+      description: "Describe el bug claramente."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: "Pasos para reproducir el comportamiento."
+      placeholder: |
+        1. Ir a '...'
+        2. Hacer click en '...'
+        3. Ver error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento esperado
+      description: "Qué esperabas que pasara."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto
+      description: "OS, navegador, versión del runtime, etc."
+    validations:
+      required: false

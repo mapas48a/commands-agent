@@ -5,12 +5,23 @@ import chalk, { type ChalkInstance } from "chalk";
 
 interface CommandResponse {
   agent: string;
+  agentPackage: string;
   command: string;
+  content: string | number[];
+  contentEncoding?: "utf-8" | "bytes";
   runtime: string;
   model: string;
+  modelFlag: string;
   executable: string;
   args: string[];
   display: string;
+}
+
+interface Invocation {
+  executable: string;
+  args: string[];
+  display: string;
+  promptMode: string;
 }
 
 interface ErrorResponse {
@@ -271,7 +282,8 @@ async function fetchCommand(
     command: string;
     runtime: string;
     model: string;
-  }
+  },
+  options: { quiet?: boolean } = {}
 ): Promise<CommandResponse> {
   const url = new URL("/command", host);
   url.searchParams.set("agent", params.agent);
@@ -279,36 +291,37 @@ async function fetchCommand(
   url.searchParams.set("runtime", params.runtime);
   url.searchParams.set("model", params.model);
 
-  const spinner = new Spinner(`querying ${PALETTE.warn(host)}`);
-  spinner.start();
-  await sleep(400);
+  const quiet = options.quiet ?? false;
+  const spinner = quiet ? null : new Spinner(`querying ${PALETTE.warn(host)}`);
+  spinner?.start();
+  if (!quiet) await sleep(400);
   let response: Response;
   try {
     response = await fetch(url.toString());
   } catch (err) {
-    spinner.fail("connection failed");
+    spinner?.fail("connection failed");
     fail(
       `Could not reach command server at ${host}.`,
       "Start it with: bun dev  (in the project root)"
     );
   }
-  await sleep(200);
-  spinner.stop(`endpoint ${PALETTE.info("/command")} reached`);
+  if (!quiet) await sleep(200);
+  spinner?.stop(`endpoint ${PALETTE.info("/command")} reached`);
 
-  const decodeSpinner = new Spinner("decoding server response");
-  decodeSpinner.start();
-  await sleep(300);
+  const decodeSpinner = quiet ? null : new Spinner("decoding server response");
+  decodeSpinner?.start();
+  if (!quiet) await sleep(300);
   let data: CommandResponse | ErrorResponse;
   try {
     data = (await response.json()) as CommandResponse | ErrorResponse;
   } catch {
-    decodeSpinner.fail("invalid JSON in response");
+    decodeSpinner?.fail("invalid JSON in response");
     fail(
       `Server returned non-JSON for ${url.pathname}.`,
       `HTTP ${response.status} — is the dev server up? try: bun dev`
     );
   }
-  decodeSpinner.stop(`payload parsed (${PALETTE.dim(`${Object.keys(data).length} fields`)})`);
+  decodeSpinner?.stop(`payload parsed (${PALETTE.dim(`${Object.keys(data).length} fields`)})`);
 
   if (!response.ok || "error" in data) {
     fail(
@@ -320,12 +333,90 @@ async function fetchCommand(
   if (
     typeof data.executable !== "string" ||
     !Array.isArray(data.args) ||
-    typeof data.display !== "string"
+    typeof data.display !== "string" ||
+    typeof data.agentPackage !== "string" ||
+    typeof data.modelFlag !== "string" ||
+    !(typeof data.content === "string" || Array.isArray(data.content))
   ) {
     fail("Server returned an invalid command payload.");
   }
 
   return data as CommandResponse;
+}
+
+function decodePrompt(payload: CommandResponse): string {
+  if (typeof payload.content === "string") {
+    return payload.content;
+  }
+
+  if (Array.isArray(payload.content)) {
+    return new TextDecoder().decode(new Uint8Array(payload.content));
+  }
+
+  fail("Server returned command content in an unsupported format.");
+}
+
+function packageArgMatches(arg: string, packageName: string): boolean {
+  return arg === packageName || arg.endsWith(`:${packageName}`);
+}
+
+function getRuntimePackageArgs(payload: CommandResponse): string[] {
+  const packageIndex = payload.args.findIndex((arg) => packageArgMatches(arg, payload.agentPackage));
+
+  if (packageIndex < 0) {
+    fail("Server payload did not include the agent package invocation.");
+  }
+
+  return payload.args.slice(0, packageIndex + 1);
+}
+
+function displayWithPrompt(payload: CommandResponse, args: string[]): string {
+  return [payload.executable, ...args]
+    .map((part) => (part === "<prompt>" ? PALETTE.warn("<prompt>") : part))
+    .join(" ");
+}
+
+function buildInvocation(payload: CommandResponse, prompt: string): Invocation {
+  const baseArgs = getRuntimePackageArgs(payload);
+
+  switch (payload.agent) {
+    case "claude-code": {
+      const args = [...baseArgs, "-p", prompt, payload.modelFlag, payload.model];
+      return {
+        executable: payload.executable,
+        args,
+        display: displayWithPrompt(payload, [...baseArgs, "-p", "<prompt>", payload.modelFlag, payload.model]),
+        promptMode: "claude print prompt",
+      };
+    }
+    case "codex": {
+      const args = [...baseArgs, "exec", payload.modelFlag, payload.model, prompt];
+      return {
+        executable: payload.executable,
+        args,
+        display: displayWithPrompt(payload, [...baseArgs, "exec", payload.modelFlag, payload.model, "<prompt>"]),
+        promptMode: "codex exec prompt",
+      };
+    }
+    case "opencode": {
+      const args = [...baseArgs, "run", prompt, payload.modelFlag, payload.model];
+      return {
+        executable: payload.executable,
+        args,
+        display: displayWithPrompt(payload, [...baseArgs, "run", "<prompt>", payload.modelFlag, payload.model]),
+        promptMode: "opencode run prompt",
+      };
+    }
+    default: {
+      const args = [...baseArgs, prompt, payload.modelFlag, payload.model];
+      return {
+        executable: payload.executable,
+        args,
+        display: displayWithPrompt(payload, [...baseArgs, "<prompt>", payload.modelFlag, payload.model]),
+        promptMode: "generic prompt argument",
+      };
+    }
+  }
 }
 
 function executeCommand(executable: string, args: string[]): number {
@@ -354,8 +445,6 @@ async function main(): Promise<void> {
     printHelp();
   }
 
-  banner();
-
   if (values.json) {
     const { agent, command, model } = parsePositionals(positionals);
     const payload = await fetchCommand(values.host, {
@@ -363,15 +452,18 @@ async function main(): Promise<void> {
       command,
       runtime: values.runtime,
       model,
-    });
+    }, { quiet: true });
     console.log(JSON.stringify(payload, null, 2));
     process.exit(0);
   }
 
+  banner();
+
   stepHeader(1, 5, "parse arguments", "running");
   const { agent, command, model } = parsePositionals(positionals);
+  const agentAliasNote = positionals[0] !== agent ? ` ${PALETTE.dim("(resolved from alias)")}` : "";
   await sleep(250);
-  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("agent", `${PALETTE.accent(agent)} ${PALETTE.dim("(resolved from alias)")}`)}`);
+  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("agent", `${PALETTE.accent(agent)}${agentAliasNote}`)}`);
   console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("command", PALETTE.warn(command))}`);
   console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("model", PALETTE.info(model))}`);
   console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("runtime", `${PALETTE.accent(values.runtime)} ${PALETTE.dim(`(${values.host})`)}`)}`);
@@ -393,15 +485,18 @@ async function main(): Promise<void> {
     runtime: values.runtime,
     model,
   });
+  const prompt = decodePrompt(payload);
+  const invocation = buildInvocation(payload, prompt);
   stepHeader(3, 5, "build executable payload", "done");
   console.log();
 
   stepHeader(4, 5, "render assembled command", "running");
   const inner = WIDTH - 4;
   const lines: string[] = [
-    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("executable", 12))} ${PALETTE.accent(payload.executable)}`,
-    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("args", 12))} ${PALETTE.text(payload.args.join(" "))}`,
-    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("full", 12))} ${PALETTE.warn.bold(payload.display)}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("executable", 12))} ${PALETTE.accent(invocation.executable)}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("mode", 12))} ${PALETTE.text(invocation.promptMode)}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("prompt", 12))} ${PALETTE.text(`${prompt.length} chars`)}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("full", 12))} ${PALETTE.warn.bold(invocation.display)}`,
   ];
   for (const l of lines) console.log(l);
   stepHeader(4, 5, "render assembled command", "done");
@@ -416,9 +511,9 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim("spawning")} ${PALETTE.accent(payload.executable)} ${PALETTE.dim("…")}`);
+  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim("spawning")} ${PALETTE.accent(invocation.executable)} ${PALETTE.dim("…")}`);
   console.log();
-  const exitCode = executeCommand(payload.executable, payload.args);
+  const exitCode = executeCommand(invocation.executable, invocation.args);
   stepHeader(5, 5, "hand off to runtime", exitCode === 0 ? "done" : "error");
   console.log();
   process.exit(exitCode);

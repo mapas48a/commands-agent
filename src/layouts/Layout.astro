@@ -4,34 +4,124 @@ import Background from "../components/Background.astro";
 
 interface Props {
   title?: string;
+  description?: string;
+  canonical?: string;
+  ogType?: string;
 }
 
-const { title = "commands.agent" } = Astro.props;
+const site = Astro.site?.href.replace(/\/$/, "") ?? "http://localhost:4321";
+const pagePath = Astro.url.pathname.replace(/^\/+|\/+$/g, "");
+const canonical = new URL(pagePath ? `/${pagePath}/` : "/", site).href;
+
+const {
+  title = "commands.agent — Marketplace de slash-commands para agentes de IA",
+  description = "Busca, copia y ejecuta slash-commands para tu agente de IA: OpenCode, Claude Code, Codex, Antigravity. Compatible con npx, bunx, pnpx y deno.",
+  canonical: canonicalOverride,
+  ogType = "website",
+} = Astro.props;
+
+const finalCanonical = canonicalOverride ?? canonical;
+
+const ogImage = new URL("/og.svg", site).href;
+
+const seoJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${site}/#website`,
+      url: site,
+      name: "commands.agent",
+      description,
+      inLanguage: "es",
+      publisher: { "@id": `${site}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${site}/#q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${site}/#app`,
+      name: "commands.agent",
+      url: site,
+      description,
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Cross-platform",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      publisher: { "@id": `${site}/#organization` },
+    },
+    {
+      "@type": "Organization",
+      "@id": `${site}/#organization`,
+      name: "commands.agent",
+      url: site,
+      logo: new URL("/favicon.svg", site).href,
+      sameAs: ["https://github.com/mapas48a/commands-agent"],
+    },
+  ],
+};
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={finalCanonical} />
+    <meta
+      name="robots"
+      content="index, follow, max-snippet:200, max-image-preview:large, max-video-preview:-1"
+    />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <meta
-      name="description"
-      content="Marketplace de slash-commands para agentes de IA. Busca, copia y ejecuta."
-    />
+    <meta name="author" content="mapas48a" />
+    <meta name="theme-color" content="#0a0a0a" />
+
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content="commands.agent" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={finalCanonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="es_ES" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:creator" content="@mapas48a" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <title>{title}</title>
+
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(seoJsonLd)} />
   </head>
   <body
     class="bg-bg text-text font-sans antialiased min-h-screen flex flex-col"
   >
+    <a
+      href="#command-list"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-3 focus:py-2 focus:rounded focus:bg-surface focus:text-text focus:border focus:border-border"
+    >
+      Saltar al contenido
+    </a>
     <Background />
     <slot />
   </body>

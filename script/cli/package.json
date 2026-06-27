@@ -4,12 +4,18 @@
   "type": "module",
   "description": "CLI companion for commands.agent",
   "bin": {
-    "commands-agent": "./src/index.ts"
+    "commands-agent": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "bun run src/index.ts",
-    "check": "bun --check src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "build": "bun build src/index.ts --target=bun --outfile=dist/index.js",
+    "check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "prepare": "bun run build"
   },
   "engines": {
     "node": ">=22.12.0"

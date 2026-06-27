@@ -1,16 +1,17 @@
 import type { APIRoute } from "astro";
-import { agentCLIs, runtimes, type AgentCLI, type Runtime } from "../data/config";
-import { turso } from "../lib/turso";
+import { agentCLIs, commands, runtimes, type AgentCLI, type Command, type Runtime } from "../data/config";
 
 export const prerender = false;
 
 interface CommandPayload {
   agent: string;
+  agentPackage: string;
   command: string;
-  content: number[];
-  contentEncoding: "bytes";
+  content: string;
+  contentEncoding: "utf-8";
   runtime: string;
   model: string;
+  modelFlag: string;
   executable: string;
   args: string[];
   display: string;
@@ -67,59 +68,28 @@ function normalizeCommandId(command: string): string {
   return command.replace(/^\/+/, "");
 }
 
-function bytesFromContent(content: unknown): number[] {
-  if (typeof content === "string") {
-    return Array.from(new TextEncoder().encode(content));
-  }
-
-  if (content instanceof ArrayBuffer) {
-    return Array.from(new Uint8Array(content));
-  }
-
-  if (ArrayBuffer.isView(content)) {
-    return Array.from(new Uint8Array(content.buffer, content.byteOffset, content.byteLength));
-  }
-
-  return [];
-}
-
-async function getCommandContent(command: string, agentId?: string): Promise<number[] | undefined> {
+function findCommand(command: string): Command | undefined {
   const commandId = normalizeCommandId(command);
 
-  if (agentId) {
-    const variantResult = await turso.execute({
-      sql: `
-        SELECT cv.content
-        FROM command_variants cv
-        JOIN commands c ON c.id = cv.command_id
-        WHERE (c.slug = ? OR c.name = ?) AND cv.agent_cli = ?
-        LIMIT 1
-      `,
-      args: [commandId, command, agentId],
-    });
+  return commands.find((c) => c.id === commandId || c.name === command);
+}
 
-    const variantContent = variantResult.rows[0]?.content;
-    if (variantContent) {
-      return bytesFromContent(variantContent);
-    }
+function getCommandContent(command: Command, agentId: string): string {
+  return command.variants.find((variant) => variant.agentCli === agentId)?.content ?? command.markdown;
+}
+
+function buildRuntimeArgs(runtime: Runtime, packageName: string): string[] {
+  const prefixParts = runtime.prefix.trim().split(/\s+/).filter(Boolean);
+  if (prefixParts.length === 0) {
+    return [packageName];
   }
 
-  const result = await turso.execute({
-    sql: `
-      SELECT content
-      FROM commands
-      WHERE slug = ? OR name = ?
-      LIMIT 1
-    `,
-    args: [commandId, command],
-  });
-
-  const content = result.rows[0]?.content;
-  if (!content) {
-    return undefined;
+  const lastPart = prefixParts[prefixParts.length - 1] ?? "";
+  if (lastPart.endsWith(":")) {
+    return [...prefixParts.slice(0, -1), `${lastPart}${packageName}`];
   }
 
-  return bytesFromContent(content);
+  return [...prefixParts, packageName];
 }
 
 function getRequestParams(url: URL): {
@@ -186,15 +156,15 @@ async function handleCommandRequest(url: URL): Promise<Response> {
     );
   }
 
-  const content = await getCommandContent(command, agentId);
-  if (!content) {
+  const commandEntry = findCommand(command);
+  if (!commandEntry) {
     return json<ErrorPayload>({ error: `Command "${command}" was not found.` }, 404);
   }
 
-  const prefixParts = runtime.prefix.trim().split(/\s+/);
+  const content = getCommandContent(commandEntry, agentId);
+  const runtimeArgs = buildRuntimeArgs(runtime, agent.package);
   const args = [
-    ...prefixParts,
-    agent.package,
+    ...runtimeArgs,
     command,
     agent.modelFlag,
     model,
@@ -204,11 +174,13 @@ async function handleCommandRequest(url: URL): Promise<Response> {
 
   const payload: CommandPayload = {
     agent: agentId,
+    agentPackage: agent.package,
     command,
     content,
-    contentEncoding: "bytes",
+    contentEncoding: "utf-8",
     runtime: runtime.id,
     model,
+    modelFlag: agent.modelFlag,
     executable: args[0],
     args: args.slice(1),
     display,
