@@ -1,42 +1,49 @@
 # commands-agent-cli
 
-CLI companion for the commands.agent marketplace.
+CLI companion for the commands.agent marketplace. Installs marketplace slash commands into the selected agent CLI configuration.
 
 ## Usage
 
 ```bash
-commands-agent <agent> <slash-command> <model> [options]
+commands-agent <agent> <slash-command> [model] [options]
 ```
 
 ### Arguments
 
 - `<agent>` — Agent CLI alias: `opencode`, `codex`, `claude` (alias of `claude-code`), `claude-code`, `antigravity`
-- `<slash-command>` — Command name, e.g. `/github-push`
-- `<model>` — Model identifier, e.g. `claude-sonnet-4-20250514`
+- `<slash-command>` — Command name to install, e.g. `/github-push`
+- `[model]` — Optional model identifier, only kept for compatibility with older invocations
 
 ### Options
 
-- `--runtime <runtime>` — Package runner: `bunx`, `npx`, `pnpx`, `deno` (default: `bunx`)
 - `--host <url>` — Base URL of the command server (default: `http://localhost:4321`)
-- `--dry-run` — Print the command without executing it
-- `--json` — Output the raw JSON response from the server
+- `--config-dir <path>` — Override the base config directory used to install files
+- `--force` — Overwrite an existing installed command
+- `--dry-run` — Print the target file without writing it
+- `--json` — Output install metadata as JSON
 - `--help` — Show help message
 
-The CLI fetches the command prompt from `/command` and passes that prompt to the selected agent. The dry-run output shows `<prompt>` as a placeholder instead of printing the full markdown in the assembled command.
+The CLI fetches the agent-specific markdown from `/command` and writes it to the selected agent's command directory.
+
+Default install targets:
+
+- OpenCode: `$XDG_CONFIG_HOME/opencode/command/<command>.md` or `~/.config/opencode/command/<command>.md`
+- Claude Code: `~/.claude/commands/<command>.md`
+- Codex: `$CODEX_HOME/prompts/<command>.md` or `~/.codex/prompts/<command>.md`
 
 ### Examples
 
 ```bash
-# Print command without running it
-commands-agent opencode /github-push claude-sonnet-4-20250514 --dry-run
-# → bunx opencode-ai /github-push --model claude-sonnet-4-20250514
+# Show where the command would be installed
+commands-agent opencode /github-push --dry-run
+# → ~/.config/opencode/command/github-push.md
 
-# Run with npm/npx
-commands-agent claude /create-pr claude-opus-4-20250514 --runtime npx
-# → npx @anthropic-ai/claude-code /create-pr --model claude-opus-4-20250514
+# Install a Claude Code slash command
+commands-agent claude /create-pr
+# → ~/.claude/commands/create-pr.md
 
-# Get JSON output
-commands-agent codex /review o4-mini --json
+# Install into a custom config root
+commands-agent codex /agent-review --config-dir /tmp/agent-config --dry-run
 ```
 
 ## Development
@@ -45,7 +52,7 @@ commands-agent codex /review o4-mini --json
 bun install
 bun run build
 bun run typecheck
-bun run src/index.ts opencode /github-push claude-sonnet-4-20250514 --dry-run
+bun run src/index.ts opencode /github-push --dry-run
 ```
 
 Make sure the Astro dev server is running (`bun dev` in the project root) so the `/command` endpoint is available. The endpoint reads commands from `src/data/config.ts`; no Turso database is required for local development.

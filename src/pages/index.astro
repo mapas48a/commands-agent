@@ -554,13 +554,12 @@ function modelsByProvider(providerId: string): typeof models {
 
   function applyLazyLoad() {
     const filtered = getFilteredItems();
+    allItems.forEach((item) => (item.style.display = "none"));
     let shown = 0;
     filtered.forEach((item) => {
       if (shown < visibleCount) {
         item.style.display = "";
         shown++;
-      } else {
-        item.style.display = "none";
       }
     });
 

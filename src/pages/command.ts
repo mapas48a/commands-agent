@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { agentCLIs, commands, runtimes, type AgentCLI, type Command, type Runtime } from "../data/config";
+import { agentCLIs, commands, runtimes, type AgentCLI, type Command, type CommandVariant, type Runtime } from "../data/config";
 
 export const prerender = false;
 
@@ -7,8 +7,10 @@ interface CommandPayload {
   agent: string;
   agentPackage: string;
   command: string;
+  commandId: string;
   content: string;
   contentEncoding: "utf-8";
+  variantFormat: string;
   runtime: string;
   model: string;
   modelFlag: string;
@@ -74,8 +76,8 @@ function findCommand(command: string): Command | undefined {
   return commands.find((c) => c.id === commandId || c.name === command);
 }
 
-function getCommandContent(command: Command, agentId: string): string {
-  return command.variants.find((variant) => variant.agentCli === agentId)?.content ?? command.markdown;
+function getCommandVariant(command: Command, agentId: string): CommandVariant | undefined {
+  return command.variants.find((variant) => variant.agentCli === agentId);
 }
 
 function buildRuntimeArgs(runtime: Runtime, packageName: string): string[] {
@@ -132,10 +134,6 @@ async function handleCommandRequest(url: URL): Promise<Response> {
     );
   }
 
-  if (!model) {
-    return json<ErrorPayload>({ error: "Missing model parameter." }, 400);
-  }
-
   const runtime = findRuntime(runtimeId);
   if (!runtime) {
     return json<ErrorPayload>(
@@ -161,23 +159,28 @@ async function handleCommandRequest(url: URL): Promise<Response> {
     return json<ErrorPayload>({ error: `Command "${command}" was not found.` }, 404);
   }
 
-  const content = getCommandContent(commandEntry, agentId);
+  const variant = getCommandVariant(commandEntry, agentId);
+  const content = variant?.content ?? commandEntry.markdown;
   const runtimeArgs = buildRuntimeArgs(runtime, agent.package);
-  const args = [
+  const args = model ? [
     ...runtimeArgs,
     command,
     agent.modelFlag,
     model,
-  ];
+  ] : [...runtimeArgs, command];
 
-  const display = `${runtime.prefix}${agent.package} ${command} ${agent.modelFlag} ${model}`.trim();
+  const display = model
+    ? `${runtime.prefix}${agent.package} ${command} ${agent.modelFlag} ${model}`.trim()
+    : `${runtime.prefix}${agent.package} ${command}`.trim();
 
   const payload: CommandPayload = {
     agent: agentId,
     agentPackage: agent.package,
     command,
+    commandId: commandEntry.id,
     content,
     contentEncoding: "utf-8",
+    variantFormat: variant?.format ?? "markdown",
     runtime: runtime.id,
     model,
     modelFlag: agent.modelFlag,

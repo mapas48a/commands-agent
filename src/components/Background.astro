@@ -72,7 +72,7 @@
     height: 100%;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
-    opacity: 0.55;
+    opacity: 0.22;
   }
 
   .bg-vignette {
@@ -260,7 +260,7 @@
         const h = window.innerHeight;
 
         // Fade del frame anterior → estela que se desvanece.
-        ctx.fillStyle = "rgba(10,10,10,0.18)";
+        ctx.fillStyle = "rgba(10,10,10,0.35)";
         ctx.fillRect(0, 0, w, h);
 
         // Steppea las serpientes cada STEP_MS (no cada frame).
@@ -276,7 +276,7 @@
           for (let i = s.body.length - 1; i >= 0; i--) {
             const [x, y] = s.body[i];
             const t = 1 - i / s.body.length; // 0=cola, 1=cabeza
-            const alpha = 0.05 + t * 0.45;
+            const alpha = 0.03 + t * 0.25;
             drawSegment(x, y, alpha, i === 0);
           }
         }

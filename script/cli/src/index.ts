@@ -1,14 +1,18 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { parseArgs } from "node:util";
-import { spawnSync } from "node:child_process";
+import { access, mkdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import chalk, { type ChalkInstance } from "chalk";
 
 interface CommandResponse {
   agent: string;
   agentPackage: string;
   command: string;
+  commandId: string;
   content: string | number[];
   contentEncoding?: "utf-8" | "bytes";
+  variantFormat?: string;
   runtime: string;
   model: string;
   modelFlag: string;
@@ -17,15 +21,21 @@ interface CommandResponse {
   display: string;
 }
 
-interface Invocation {
-  executable: string;
-  args: string[];
-  display: string;
-  promptMode: string;
-}
-
 interface ErrorResponse {
   error: string;
+}
+
+interface ParsedArgs {
+  agent: string;
+  command: string;
+  model: string;
+}
+
+interface InstallTarget {
+  agent: string;
+  filePath: string;
+  displayPath: string;
+  note: string;
 }
 
 const DEFAULT_HOST = "http://localhost:4321";
@@ -147,27 +157,28 @@ function sectionTitle(text: string): void {
 }
 
 const helpText = `
-${PALETTE.accent.bold("commands-agent")} ${PALETTE.dim("— build and run an AI agent command")}
+${PALETTE.accent.bold("commands-agent")} ${PALETTE.dim("— install marketplace slash commands into agent config")}
 
 ${PALETTE.text("Usage:")}
-  ${PALETTE.warn("commands-agent")} <agent> <slash-command> <model> [options]
+  ${PALETTE.warn("commands-agent")} <agent> <slash-command> [model] [options]
 
 ${PALETTE.text("Arguments:")}
-  ${PALETTE.dim("<agent>")}          Agent CLI alias: opencode, codex, claude
-  ${PALETTE.dim("<slash-command>")}  Command name, e.g. /github-push
-  ${PALETTE.dim("<model>")}          Model identifier, e.g. claude-sonnet-4-20250514
+  ${PALETTE.dim("<agent>")}          Agent CLI alias: opencode, codex, claude, claude-code
+  ${PALETTE.dim("<slash-command>")}  Command name to install, e.g. /github-push
+  ${PALETTE.dim("[model]")}          Optional model, only used for server compatibility
 
 ${PALETTE.text("Options:")}
-  ${PALETTE.warn("--runtime")} <runtime>  Package runner: bunx, npx, pnpx, deno (default: bunx)
-  ${PALETTE.warn("--host")} <url>         Base URL of the command server (default: http://localhost:4321)
-  ${PALETTE.warn("--dry-run")}            Print the command without executing it
-  ${PALETTE.warn("--json")}               Output the raw JSON response from the server
-  ${PALETTE.warn("--help")}               Show this help message
+  ${PALETTE.warn("--host")} <url>            Base URL of the command server (default: http://localhost:4321)
+  ${PALETTE.warn("--config-dir")} <path>     Override base config directory for install target
+  ${PALETTE.warn("--force")}                Overwrite an existing installed command
+  ${PALETTE.warn("--dry-run")}              Print the install target without writing
+  ${PALETTE.warn("--json")}                 Output install metadata as JSON
+  ${PALETTE.warn("--help")}                 Show this help message
 
 ${PALETTE.text("Examples:")}
-  ${PALETTE.dim("commands-agent opencode /github-push claude-sonnet-4-20250514")}
-  ${PALETTE.dim("commands-agent claude /create-pr claude-opus-4-20250514 --runtime npx")}
-  ${PALETTE.dim("commands-agent codex /review o4-mini --dry-run")}
+  ${PALETTE.dim("commands-agent opencode /github-push")}
+  ${PALETTE.dim("commands-agent claude /create-pr")}
+  ${PALETTE.dim("commands-agent codex /agent-review --dry-run")}
 `;
 
 function printHelp(): never {
@@ -191,22 +202,18 @@ const agentAliases: Record<string, string> = {
   claude: "claude-code",
 };
 
-function parsePositionals(positionalArgs: string[]): {
-  agent: string;
-  command: string;
-  model: string;
-} {
-  if (positionalArgs.length < 3) {
+function parsePositionals(positionalArgs: string[]): ParsedArgs {
+  if (positionalArgs.length < 2) {
     fail(
       "Missing required arguments.",
-      "Expected: <agent> <slash-command> <model>"
+      "Expected: <agent> <slash-command>"
     );
   }
 
   const rawAgent = positionalArgs[0]!;
   const agent = agentAliases[rawAgent] ?? rawAgent;
   const command = positionalArgs[1]!;
-  const model = positionalArgs[2]!;
+  const model = positionalArgs[2] ?? "";
 
   if (!command.startsWith("/")) {
     fail(
@@ -331,11 +338,8 @@ async function fetchCommand(
   }
 
   if (
-    typeof data.executable !== "string" ||
-    !Array.isArray(data.args) ||
-    typeof data.display !== "string" ||
     typeof data.agentPackage !== "string" ||
-    typeof data.modelFlag !== "string" ||
+    typeof data.commandId !== "string" ||
     !(typeof data.content === "string" || Array.isArray(data.content))
   ) {
     fail("Server returned an invalid command payload.");
@@ -356,76 +360,106 @@ function decodePrompt(payload: CommandResponse): string {
   fail("Server returned command content in an unsupported format.");
 }
 
-function packageArgMatches(arg: string, packageName: string): boolean {
-  return arg === packageName || arg.endsWith(`:${packageName}`);
-}
-
-function getRuntimePackageArgs(payload: CommandResponse): string[] {
-  const packageIndex = payload.args.findIndex((arg) => packageArgMatches(arg, payload.agentPackage));
-
-  if (packageIndex < 0) {
-    fail("Server payload did not include the agent package invocation.");
+function getHomeDir(): string {
+  const home = homedir();
+  if (!home) {
+    fail("Could not detect the user home directory.");
   }
 
-  return payload.args.slice(0, packageIndex + 1);
+  return home;
 }
 
-function displayWithPrompt(payload: CommandResponse, args: string[]): string {
-  return [payload.executable, ...args]
-    .map((part) => (part === "<prompt>" ? PALETTE.warn("<prompt>") : part))
-    .join(" ");
+function getXdgConfigHome(): string {
+  return process.env.XDG_CONFIG_HOME ?? join(getHomeDir(), ".config");
 }
 
-function buildInvocation(payload: CommandResponse, prompt: string): Invocation {
-  const baseArgs = getRuntimePackageArgs(payload);
+function commandFileName(command: string): string {
+  return `${command.replace(/^\/+/, "")}.md`;
+}
+
+function resolveInstallTarget(payload: CommandResponse, configDir?: string): InstallTarget {
+  const fileName = commandFileName(payload.command);
+  const baseDir = configDir ? resolve(configDir) : undefined;
 
   switch (payload.agent) {
-    case "claude-code": {
-      const args = [...baseArgs, "-p", prompt, payload.modelFlag, payload.model];
+    case "opencode": {
+      const root = baseDir ?? process.env.OPENCODE_CONFIG_DIR ?? join(getXdgConfigHome(), "opencode");
       return {
-        executable: payload.executable,
-        args,
-        display: displayWithPrompt(payload, [...baseArgs, "-p", "<prompt>", payload.modelFlag, payload.model]),
-        promptMode: "claude print prompt",
+        agent: payload.agent,
+        filePath: join(root, "command", fileName),
+        displayPath: join(root, "command", fileName),
+        note: "OpenCode user command",
+      };
+    }
+    case "claude-code": {
+      const root = baseDir ? join(baseDir, "claude") : process.env.CLAUDE_CONFIG_DIR ?? join(getHomeDir(), ".claude");
+      return {
+        agent: payload.agent,
+        filePath: join(root, "commands", fileName),
+        displayPath: join(root, "commands", fileName),
+        note: "Claude Code user slash command",
       };
     }
     case "codex": {
-      const args = [...baseArgs, "exec", payload.modelFlag, payload.model, prompt];
+      const root = baseDir ? join(baseDir, "codex") : process.env.CODEX_HOME ?? join(getHomeDir(), ".codex");
       return {
-        executable: payload.executable,
-        args,
-        display: displayWithPrompt(payload, [...baseArgs, "exec", payload.modelFlag, payload.model, "<prompt>"]),
-        promptMode: "codex exec prompt",
-      };
-    }
-    case "opencode": {
-      const args = [...baseArgs, "run", prompt, payload.modelFlag, payload.model];
-      return {
-        executable: payload.executable,
-        args,
-        display: displayWithPrompt(payload, [...baseArgs, "run", "<prompt>", payload.modelFlag, payload.model]),
-        promptMode: "opencode run prompt",
+        agent: payload.agent,
+        filePath: join(root, "prompts", fileName),
+        displayPath: join(root, "prompts", fileName),
+        note: "Codex user prompt command",
       };
     }
     default: {
-      const args = [...baseArgs, prompt, payload.modelFlag, payload.model];
+      const root = baseDir ?? join(getXdgConfigHome(), payload.agent);
       return {
-        executable: payload.executable,
-        args,
-        display: displayWithPrompt(payload, [...baseArgs, "<prompt>", payload.modelFlag, payload.model]),
-        promptMode: "generic prompt argument",
+        agent: payload.agent,
+        filePath: join(root, "commands", fileName),
+        displayPath: join(root, "commands", fileName),
+        note: "Generic agent command",
       };
     }
   }
 }
 
-function executeCommand(executable: string, args: string[]): number {
-  const result = spawnSync(executable, args, {
-    stdio: "inherit",
-    shell: false,
-  });
+async function fileExists(filePath: string): Promise<boolean> {
+  const bun = globalThis.Bun;
+  if (bun) {
+    return bun.file(filePath).exists();
+  }
 
-  return result.status ?? 1;
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function writeTextFile(filePath: string, content: string): Promise<void> {
+  await mkdir(dirname(filePath), { recursive: true });
+
+  const bun = globalThis.Bun;
+  if (bun) {
+    await bun.write(filePath, content);
+    return;
+  }
+
+  await writeFile(filePath, content, "utf8");
+}
+
+async function installCommand(target: InstallTarget, content: string, force: boolean): Promise<"created" | "overwritten"> {
+  const exists = await fileExists(target.filePath);
+  if (exists && !force) {
+    fail(
+      `Command already exists at ${target.displayPath}.`,
+      "Re-run with --force to overwrite it."
+    );
+  }
+
+  const normalizedContent = content.endsWith("\n") ? content : `${content}\n`;
+  await writeTextFile(target.filePath, normalizedContent);
+
+  return exists ? "overwritten" : "created";
 }
 
 async function main(): Promise<void> {
@@ -434,6 +468,8 @@ async function main(): Promise<void> {
     options: {
       runtime: { type: "string", default: DEFAULT_RUNTIME },
       host: { type: "string", default: DEFAULT_HOST },
+      "config-dir": { type: "string" },
+      force: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       json: { type: "boolean", default: false },
       help: { type: "boolean", default: false },
@@ -453,7 +489,8 @@ async function main(): Promise<void> {
       runtime: values.runtime,
       model,
     }, { quiet: true });
-    console.log(JSON.stringify(payload, null, 2));
+    const target = resolveInstallTarget(payload, values["config-dir"]);
+    console.log(JSON.stringify({ ...payload, installTarget: target }, null, 2));
     process.exit(0);
   }
 
@@ -465,8 +502,13 @@ async function main(): Promise<void> {
   await sleep(250);
   console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("agent", `${PALETTE.accent(agent)}${agentAliasNote}`)}`);
   console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("command", PALETTE.warn(command))}`);
-  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("model", PALETTE.info(model))}`);
-  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("runtime", `${PALETTE.accent(values.runtime)} ${PALETTE.dim(`(${values.host})`)}`)}`);
+  if (model) {
+    console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("model", PALETTE.info(model))}`);
+  }
+  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("server", values.host)}`);
+  if (values["config-dir"]) {
+    console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${kv("config-dir", resolve(values["config-dir"]))}`);
+  }
   stepHeader(1, 5, "parse arguments", "done");
   console.log();
 
@@ -478,45 +520,43 @@ async function main(): Promise<void> {
   stepHeader(2, 5, "resolve command metadata", "done");
   console.log();
 
-  stepHeader(3, 5, "build executable payload", "running");
+  stepHeader(3, 5, "fetch command variant", "running");
   const payload = await fetchCommand(values.host, {
     agent,
     command,
     runtime: values.runtime,
     model,
   });
-  const prompt = decodePrompt(payload);
-  const invocation = buildInvocation(payload, prompt);
-  stepHeader(3, 5, "build executable payload", "done");
+  const content = decodePrompt(payload);
+  stepHeader(3, 5, "fetch command variant", "done");
   console.log();
 
-  stepHeader(4, 5, "render assembled command", "running");
-  const inner = WIDTH - 4;
+  stepHeader(4, 5, "resolve install target", "running");
+  const target = resolveInstallTarget(payload, values["config-dir"]);
   const lines: string[] = [
-    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("executable", 12))} ${PALETTE.accent(invocation.executable)}`,
-    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("mode", 12))} ${PALETTE.text(invocation.promptMode)}`,
-    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("prompt", 12))} ${PALETTE.text(`${prompt.length} chars`)}`,
-    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("full", 12))} ${PALETTE.warn.bold(invocation.display)}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("target", 12))} ${PALETTE.accent(target.displayPath)}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("type", 12))} ${PALETTE.text(target.note)}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("format", 12))} ${PALETTE.text(payload.variantFormat ?? "markdown")}`,
+    `  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim(pad("content", 12))} ${PALETTE.text(`${content.length} chars`)}`,
   ];
   for (const l of lines) console.log(l);
-  stepHeader(4, 5, "render assembled command", "done");
+  stepHeader(4, 5, "resolve install target", "done");
   console.log();
 
-  stepHeader(5, 5, values["dry-run"] ? "dry-run (skipping execute)" : "hand off to runtime", "running");
+  stepHeader(5, 5, values["dry-run"] ? "dry-run (skipping write)" : "write command file", "running");
   if (values["dry-run"]) {
     await sleep(300);
-    console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${PALETTE.warn("--dry-run")} ${PALETTE.dim("set, command NOT executed.")}`);
-    stepHeader(5, 5, "dry-run (skipping execute)", "done");
+    console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${PALETTE.warn("--dry-run")} ${PALETTE.dim("set, command file NOT written.")}`);
+    stepHeader(5, 5, "dry-run (skipping write)", "done");
     console.log();
     process.exit(0);
   }
 
-  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${PALETTE.dim("spawning")} ${PALETTE.accent(invocation.executable)} ${PALETTE.dim("…")}`);
+  const result = await installCommand(target, content, Boolean(values.force));
+  console.log(`  ${PALETTE.dim(" ".repeat(8))}  ${PALETTE.dim(SYM.shade)} ${PALETTE.ok(result)} ${PALETTE.text(target.displayPath)}`);
+  stepHeader(5, 5, "write command file", "done");
   console.log();
-  const exitCode = executeCommand(invocation.executable, invocation.args);
-  stepHeader(5, 5, "hand off to runtime", exitCode === 0 ? "done" : "error");
-  console.log();
-  process.exit(exitCode);
+  process.exit(0);
 }
 
 main().catch((err) => {
