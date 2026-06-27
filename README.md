@@ -171,36 +171,37 @@
  ### Formato del comando ejecutable
 
  ```sh
- {runtime} {agent-package} /{command-name} {model-flag} {model}
+ {runtime} commands-agent-cli@0.1.0 {agent} /{command-name}
  ```
 
  Ejemplos:
 
  ```sh
- bunx opencode-ai /github-push --model claude-sonnet-4-20250514
- npx @anthropic-ai/claude-code /create-pr --model claude-opus-4-20250514
- pnpx @openai/codex /lint-fix --model o4-mini
+ bunx commands-agent-cli@0.1.0 opencode /github-push
+ npx commands-agent-cli@0.1.0 claude /create-pr
+ pnpx commands-agent-cli@0.1.0 codex /lint-fix
+ deno run --allow-all npm:commands-agent-cli@0.1.0 opencode /github-push
  ```
 
  ## CLI local
 
- El proyecto incluye un CLI en `script/cli/` que consulta el endpoint `/command` y ejecuta el agente:
+  El proyecto incluye un CLI en `script/cli/` que consulta el endpoint `/command` e instala el comando en la config del agente:
 
  ```sh
  cd script/cli
  bun install
 
- # Dry-run: solo imprime el comando
- bun run src/index.ts opencode /github-push claude-sonnet-4-20250514 --dry-run
+ # Dry-run: solo imprime la ruta de instalación
+ bun run src/index.ts opencode /github-push --dry-run
 
  # Ejecutar de verdad
- bun run src/index.ts opencode /github-push claude-sonnet-4-20250514
+ bun run src/index.ts opencode /github-push
 
- # Con otro runtime
- bun run src/index.ts claude /create-pr claude-opus-4-20250514 --runtime npx
+  # Con otro runtime
+  bun run src/index.ts claude /create-pr --runtime npx
 
  # Output JSON
- bun run src/index.ts codex /lint-fix o4-mini --json
+ bun run src/index.ts codex /lint-fix --json
  ```
 
  > El dev server (`bun dev` en la raíz) debe estar corriendo para que el CLI pueda consultar `/command`.

@@ -1,10 +1,11 @@
 {
   "name": "commands-agent-cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "CLI companion for commands.agent",
   "bin": {
-    "commands-agent": "./dist/index.js"
+    "commands-agent": "./dist/index.js",
+    "commands-agent-cli": "./dist/index.js"
   },
   "files": [
     "dist",

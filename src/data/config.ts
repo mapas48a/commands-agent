@@ -54,6 +54,10 @@ export interface Command {
   variants: CommandVariant[];
 }
 
+export const cliPackageName = "commands-agent-cli";
+export const cliPackageVersion = "0.1.0";
+export const cliPackageSpec = `${cliPackageName}@${cliPackageVersion}`;
+
 export const categories: Category[] = [
   { id: "agent", name: "Agent", icon: "bot" },
   { id: "workflow", name: "Workflow", icon: "workflow" },

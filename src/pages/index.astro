@@ -3,16 +3,14 @@ export const prerender = true;
 import Layout from "../layouts/Layout.astro";
 import Header from "../components/Header.astro";
 import Icon from "../components/Icon.astro";
-import { runtimes, agentCLIs, providers, models } from "../data/config";
+import { runtimes, agentCLIs } from "../data/config";
 import { iconRegistry } from "../data/icons";
 import { getCategories, getCommands } from "../lib/queries";
 
 const categories = await getCategories();
 const commands = await getCommands();
 
-function modelsByProvider(providerId: string): typeof models {
-  return models.filter((m) => m.provider === providerId);
-}
+
 ---
 
 <Layout
@@ -28,17 +26,22 @@ function modelsByProvider(providerId: string): typeof models {
         style="font-weight: 500;"
       >
         <span class="text-text">Slash</span>
-        <span class="font-mono text-text-muted bg-surface border border-border rounded-md px-1.5 py-0.5 text-[0.85em]">/commands</span>
+        <span
+          class="font-mono text-text-muted bg-surface border border-border rounded-md px-1.5 py-0.5 text-[0.85em]"
+          >/commands</span
+        >
         <span class="text-text-muted">para tu</span>
         <span class="text-text">agent-cli</span>
         <span class="text-text-muted">,</span>
         <span
           class="font-mono text-accent"
           style="font-weight: 700; letter-spacing: -0.02em; font-size: 1.15em;"
-        >más rápido</span>
+          >más rápido</span
+        >
       </h1>
       <p class="mt-2 font-mono text-sm text-text-muted">
-        Marketplace de slash-commands para OpenCode, Claude Code, Codex y Antigravity
+        Marketplace de slash-commands para OpenCode, Claude Code, Codex y
+        Antigravity
       </p>
     </section>
 
@@ -51,25 +54,35 @@ function modelsByProvider(providerId: string): typeof models {
         >
           All
         </button>
-        {categories.map((cat) => (
-          <button
-            type="button"
-            data-category={cat.id}
-            class="cat-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-sm font-mono transition-all border-border bg-surface text-text-muted hover:border-border-hover hover:text-text"
-          >
-            <Icon name={cat.icon} type="lucide" class="w-3.5 h-3.5" />
-            <span>{cat.name}</span>
-          </button>
-        ))}
+        {
+          categories.map((cat) => (
+            <button
+              type="button"
+              data-category={cat.id}
+              class="cat-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-sm font-mono transition-all border-border bg-surface text-text-muted hover:border-border-hover hover:text-text"
+            >
+              <Icon name={cat.icon} type="lucide" class="w-3.5 h-3.5" />
+              <span>{cat.name}</span>
+            </button>
+          ))
+        }
       </div>
     </section>
 
     <section class="search-area mb-4">
       <div class="relative">
-        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-dim pointer-events-none">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" stroke-linecap="round" />
+        <div
+          class="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-dim pointer-events-none"
+        >
+          <svg
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35" stroke-linecap="round"></path>
           </svg>
         </div>
         <input
@@ -79,180 +92,231 @@ function modelsByProvider(providerId: string): typeof models {
           placeholder="Search commands..."
           class="w-full bg-surface border border-border rounded-xl pl-10 pr-32 py-3 text-sm font-mono text-text placeholder:text-text-dim focus:outline-none focus:border-text-dim transition-colors"
         />
-        <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          <div class="flex rounded-md border border-border overflow-hidden" data-view-toggle>
-            <button type="button" data-view="list" class="view-btn px-2 py-1 transition-colors bg-text text-bg" aria-label="List view">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round" />
-                <line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round" />
-                <line x1="8" y1="18" x2="21" y2="18" stroke-linecap="round" />
-                <line x1="3" y1="6" x2="3.01" y2="6" stroke-linecap="round" />
-                <line x1="3" y1="12" x2="3.01" y2="12" stroke-linecap="round" />
-                <line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round" />
+        <div
+          class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2"
+        >
+          <div
+            class="flex rounded-md border border-border overflow-hidden"
+            data-view-toggle
+          >
+            <button
+              type="button"
+              data-view="list"
+              class="view-btn px-2 py-1 transition-colors bg-text text-bg"
+              aria-label="List view"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="8" y1="6" x2="21" y2="6" stroke-linecap="round"
+                ></line>
+                <line x1="8" y1="12" x2="21" y2="12" stroke-linecap="round"
+                ></line>
+                <line x1="8" y1="18" x2="21" y2="18" stroke-linecap="round"
+                ></line>
+                <line x1="3" y1="6" x2="3.01" y2="6" stroke-linecap="round"
+                ></line>
+                <line x1="3" y1="12" x2="3.01" y2="12" stroke-linecap="round"
+                ></line>
+                <line x1="3" y1="18" x2="3.01" y2="18" stroke-linecap="round"
+                ></line>
               </svg>
             </button>
-            <button type="button" data-view="grid" class="view-btn px-2 py-1 transition-colors text-text-dim hover:text-text" aria-label="Grid view">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="14" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
+            <button
+              type="button"
+              data-view="grid"
+              class="view-btn px-2 py-1 transition-colors text-text-dim hover:text-text"
+              aria-label="Grid view"
+            >
+              <svg
+                class="w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
               </svg>
             </button>
           </div>
-          <kbd class="text-xs font-mono text-text-dim border border-border rounded px-1.5 py-0.5">/</kbd>
+          <kbd
+            class="text-xs font-mono text-text-dim border border-border rounded px-1.5 py-0.5"
+            >/</kbd
+          >
         </div>
       </div>
     </section>
 
     <section class="mt-4">
       <ul id="command-list" class="command-list space-y-1.5">
-        {commands.map((cmd) => {
-          const cat = categories.find((c) => c.id === cmd.category);
-          return (
-            <li
-              class="command-item group rounded-xl border border-border bg-surface hover:border-border-hover hover:bg-surface-hover transition-all cursor-pointer overflow-visible"
-              data-command-id={cmd.id}
-              data-command-name={cmd.name.toLowerCase()}
-              data-command-category={cmd.category}
-              data-command-desc={cmd.description.toLowerCase()}
-            >
-              <div class="command-header flex items-center gap-3 px-4 py-3">
-                <div class="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-bg">
-                  {cat && <Icon name={cat.icon} type="lucide" class="w-4 h-4" />}
-                </div>
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-mono text-text truncate">
-                    {cmd.name}
+        {
+          commands.map((cmd) => {
+            const cat = categories.find((c) => c.id === cmd.category);
+            return (
+              <li
+                class="command-item group rounded-xl border border-border bg-surface hover:border-border-hover hover:bg-surface-hover transition-all cursor-pointer overflow-visible"
+                data-command-id={cmd.id}
+                data-command-name={cmd.name.toLowerCase()}
+                data-command-category={cmd.category}
+                data-command-desc={cmd.description.toLowerCase()}
+              >
+                <div class="command-header flex items-center gap-3 px-4 py-3">
+                  <div class="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-bg">
+                    {cat && (
+                      <Icon name={cat.icon} type="lucide" class="w-4 h-4" />
+                    )}
                   </div>
-                  <div class="text-xs font-mono text-text-dim truncate">
-                    {cmd.description}
-                  </div>
-                </div>
-                {cat && (
-                  <span class="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider text-text-dim border border-border rounded-full px-2 py-0.5">
-                    {cat.name}
-                  </span>
-                )}
-                <a
-                  href={`/command/${cmd.id}`}
-                  class="permalink-btn shrink-0 p-1.5 rounded-md text-text-dim hover:text-text hover:bg-surface-hover transition-colors"
-                  aria-label={`Ver detalles de ${cmd.name}`}
-                  title="Página del comando (permalink)"
-                >
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke-linecap="round" stroke-linejoin="round" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </a>
-                <svg class="w-4 h-4 text-text-dim shrink-0 transition-transform expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </div>
-
-              <div class="command-panel hidden px-4 pb-4 pt-1 border-t border-border bg-bg overflow-visible">
-                <div class="mt-3 rounded-lg border border-border bg-surface p-3">
-                  <div class="text-[10px] font-mono uppercase tracking-wider text-text-dim mb-2">
-                    prompt .md
-                  </div>
-                  <pre class="md-content text-xs font-mono text-text-muted whitespace-pre-wrap break-words max-h-80 overflow-y-auto leading-relaxed"></pre>
-                </div>
-
-                <div class="mt-3 flex flex-col gap-2">
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    {runtimes.map((rt) => (
-                      <button
-                        type="button"
-                        class="runtime-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all"
-                        data-runtime-prefix={rt.prefix}
-                      >
-                        <Icon name={rt.icon} class="w-3 h-3" />
-                        <span>{rt.name}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    {agentCLIs.map((ac) => {
-                      const hasVariant = cmd.variants.some((v) => v.agentCli === ac.id);
-                      return (
-                        <button
-                          type="button"
-                          class={`agent-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all ${hasVariant ? "" : "opacity-40 cursor-not-allowed"}`}
-                          data-agent-id={ac.id}
-                          data-agent-package={ac.package}
-                          data-agent-model-flag={ac.modelFlag}
-                          data-has-variant={hasVariant ? "true" : "false"}
-                          title={hasVariant ? ac.name : `${ac.name} — Coming soon`}
-                        >
-                          <Icon name={ac.icon} type={ac.iconType} class="w-3.5 h-3.5" />
-                          <span>{ac.name}</span>
-                          {!hasVariant && <span class="text-[9px] text-text-dim ml-0.5">soon</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div class="mt-2 flex items-center gap-2">
-                  <div class="relative model-dropdown">
-                    <button
-                      type="button"
-                      class="model-trigger flex items-center gap-1.5 bg-surface border border-border rounded-md pl-2 pr-7 py-1 text-xs font-mono text-text cursor-pointer hover:border-border-hover transition-colors"
-                    >
-                      <span class="model-trigger-icon flex items-center justify-center w-3.5 h-3.5 shrink-0"></span>
-                      <span class="model-trigger-label truncate max-w-[160px] text-text-dim">Select model</span>
-                      <svg class="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-dim pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                    </button>
-                    <div class="model-options hidden absolute z-[60] mt-1 w-72 max-h-72 overflow-y-auto bg-surface border border-border rounded-lg shadow-xl left-0">
-                      {providers.map((prov) => (
-                        <div class="provider-group" data-provider={prov.id}>
-                          <div class="flex items-center gap-2 px-3 py-1.5 sticky top-0 bg-surface border-b border-border">
-                            <Icon name={prov.icon} class="w-4 h-4" />
-                            <span class="text-[10px] font-mono uppercase tracking-wider text-text-dim">{prov.name}</span>
-                          </div>
-                          {modelsByProvider(prov.id).map((m) => (
-                            <button
-                              type="button"
-                              class="model-option flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs font-mono text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
-                              data-model-id={m.id}
-                              data-model-name={m.name}
-                              data-provider-id={prov.id}
-                              data-provider-name={prov.name}
-                              data-provider-icon={prov.icon}
-                            >
-                              <span class="text-text-dim w-20 truncate">{m.name}</span>
-                              <span class="text-text-dim text-[10px] flex-1 truncate">{m.id}</span>
-                              {m.context && <span class="text-text-dim text-[10px]">{m.context}</span>}
-                            </button>
-                          ))}
-                        </div>
-                      ))}
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm font-mono text-text truncate">
+                      {cmd.name}
+                    </div>
+                    <div class="text-xs font-mono text-text-dim truncate">
+                      {cmd.description}
                     </div>
                   </div>
+                  {cat && (
+                    <span class="hidden sm:inline-block text-[10px] font-mono uppercase tracking-wider text-text-dim border border-border rounded-full px-2 py-0.5">
+                      {cat.name}
+                    </span>
+                  )}
+                  <a
+                    href={`/command/${cmd.id}`}
+                    class="permalink-btn shrink-0 p-1.5 rounded-md text-text-dim hover:text-text hover:bg-surface-hover transition-colors"
+                    aria-label={`Ver detalles de ${cmd.name}`}
+                    title="Página del comando (permalink)"
+                  >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </a>
+                  <svg
+                    class="w-4 h-4 text-text-dim shrink-0 transition-transform expand-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M6 9l6 6 6-6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
                 </div>
 
-                <div class="mt-2.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
-                  <code class="command-output flex-1 font-mono text-xs text-text overflow-x-auto whitespace-nowrap">
-                    <span class="text-text-dim">$ </span>
-                  </code>
-                  <button
-                    type="button"
-                    class="copy-btn shrink-0 flex items-center gap-1 text-xs font-mono text-text-dim hover:text-text transition-colors px-2 py-1 rounded hover:bg-surface-hover"
-                  >
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                    <span class="copy-label">Copy</span>
-                  </button>
+                <div class="command-panel hidden px-4 pb-4 pt-1 border-t border-border bg-bg overflow-visible">
+                  <div class="mt-3 rounded-lg border border-border bg-surface p-3">
+                    <div class="text-[10px] font-mono uppercase tracking-wider text-text-dim mb-2">
+                      prompt .md
+                    </div>
+                    <pre class="md-content text-xs font-mono text-text-muted whitespace-pre-wrap break-words max-h-80 overflow-y-auto leading-relaxed" />
+                  </div>
+
+                  <div class="mt-3 flex flex-col gap-2">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      {runtimes.map((rt) => (
+                        <button
+                          type="button"
+                          class="runtime-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all"
+                          data-runtime-prefix={rt.prefix}
+                        >
+                          <Icon name={rt.icon} class="w-3 h-3" />
+                          <span>{rt.name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      {agentCLIs.map((ac) => {
+                        const hasVariant = cmd.variants.some(
+                          (v) => v.agentCli === ac.id,
+                        );
+                        return (
+                          <button
+                            type="button"
+                            class={`agent-btn flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs font-mono transition-all ${hasVariant ? "" : "opacity-40 cursor-not-allowed"}`}
+                            data-agent-id={ac.id}
+                            data-agent-package={ac.package}
+                            data-agent-model-flag={ac.modelFlag}
+                            data-has-variant={hasVariant ? "true" : "false"}
+                            title={
+                              hasVariant ? ac.name : `${ac.name} — Coming soon`
+                            }
+                          >
+                            <Icon
+                              name={ac.icon}
+                              type={ac.iconType}
+                              class="w-3.5 h-3.5"
+                            />
+                            <span>{ac.name}</span>
+                            {!hasVariant && (
+                              <span class="text-[9px] text-text-dim ml-0.5">
+                                soon
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+
+
+                  <div class="mt-2.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+                    <code class="command-output flex-1 font-mono text-xs text-text overflow-x-auto whitespace-nowrap">
+                      <span class="text-text-dim">$ </span>
+                    </code>
+                    <button
+                      type="button"
+                      class="copy-btn shrink-0 flex items-center gap-1 text-xs font-mono text-text-dim hover:text-text transition-colors px-2 py-1 rounded hover:bg-surface-hover"
+                    >
+                      <svg
+                        class="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <rect
+                          x="9"
+                          y="9"
+                          width="13"
+                          height="13"
+                          rx="2"
+                          ry="2"
+                        />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      <span class="copy-label">Copy</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </li>
-          );
-        })}
+              </li>
+            );
+          })
+        }
       </ul>
 
       <div id="show-more-wrap" class="hidden text-center mt-4">
@@ -265,28 +329,57 @@ function modelsByProvider(providerId: string): typeof models {
         </button>
       </div>
 
-      <div id="no-results" class="hidden text-center py-12 text-text-dim font-mono text-sm">
+      <div
+        id="no-results"
+        class="hidden text-center py-12 text-text-dim font-mono text-sm"
+      >
         No commands found.
       </div>
     </section>
   </main>
 
-  <footer class="mt-12 pt-6 border-t border-border text-center text-xs font-mono text-text-dim">
-    <p>construido con <span class="text-text-muted">♥</span> by <a href="https://github.com/mapas48a" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">mapas48a</a></p>
-    <p class="mt-1">icons by <a href="https://svgl.app" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">svgl.app</a> + <a href="https://lucide.dev" target="_blank" rel="noopener" class="text-text-muted hover:text-text transition-colors">lucide</a></p>
+  <footer
+    class="mt-12 pt-6 border-t border-border text-center text-xs font-mono text-text-dim"
+  >
+    <p>
+      construido con <span class="text-text-muted">♥</span> by <a
+        href="https://github.com/mapas48a"
+        target="_blank"
+        rel="noopener"
+        class="text-text-muted hover:text-text transition-colors">mapas48a</a>
+    </p>
+    <p class="mt-1">
+      icons by <a
+        href="https://svgl.app"
+        target="_blank"
+        rel="noopener"
+        class="text-text-muted hover:text-text transition-colors">svgl.app</a
+      > + <a
+        href="https://lucide.dev"
+        target="_blank"
+        rel="noopener"
+        class="text-text-muted hover:text-text transition-colors">lucide</a>
+    </p>
   </footer>
 </Layout>
 
-<script is:inline define:vars={{ runtimes, agentCLIs, commands, models, providers, iconRegistry }}>
-  const providerMap = {};
-  providers.forEach((p) => (providerMap[p.id] = p));
-  const modelMap = {};
-  models.forEach((m) => (modelMap[m.id] = m));
+<script
+  is:inline
+  define:vars={{
+    runtimes,
+    agentCLIs,
+    commands,
+    iconRegistry,
+  }}
+>
   const agentCLIMap = {};
   agentCLIs.forEach((a) => (agentCLIMap[a.id] = a));
 
   function escapeHtml(str) {
-    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   let activeCategory = "all";
@@ -311,17 +404,12 @@ function modelsByProvider(providerId: string): typeof models {
     const copyLabel = item.querySelector(".copy-label");
     const mdContent = item.querySelector(".md-content");
 
-    const modelTrigger = item.querySelector(".model-trigger");
-    const modelTriggerLabel = item.querySelector(".model-trigger-label");
-    const modelTriggerIcon = item.querySelector(".model-trigger-icon");
-    const modelOptions = item.querySelector(".model-options");
-
-  let activeRuntime = runtimes[0];
-  let activeAgent = agentCLIs.find((a) => cmd.variants.some((v) => v.agentCli === a.id)) ?? agentCLIs[0];
-  let activeModel = null;
-  const cliPackage = "commands-agent-cli";
-  let isOpen = false;
-  let modelDropdownOpen = false;
+    let activeRuntime = runtimes[0];
+    let activeAgent =
+      agentCLIs.find((a) => cmd.variants.some((v) => v.agentCli === a.id)) ??
+      agentCLIs[0];
+    const cliPackage = "commands-agent-cli";
+    let isOpen = false;
 
     function getVariantContent(agentId) {
       const variant = cmd.variants.find((v) => v.agentCli === agentId);
@@ -335,7 +423,10 @@ function modelsByProvider(providerId: string): typeof models {
         mdContent.classList.remove("text-text-dim");
         mdContent.classList.add("text-text-muted");
       } else {
-        mdContent.textContent = "This command is not yet available for " + activeAgent.name + ". Coming soon!";
+        mdContent.textContent =
+          "This command is not yet available for " +
+          activeAgent.name +
+          ". Coming soon!";
         mdContent.classList.remove("text-text-muted");
         mdContent.classList.add("text-text-dim");
       }
@@ -344,36 +435,32 @@ function modelsByProvider(providerId: string): typeof models {
     function renderCommand() {
       const prefix = activeRuntime.prefix.trim();
       const slash = cmd.name;
+      const html =
+        '<span class="text-text-dim">$ </span>' +
+        '<span class="text-text">' +
+        escapeHtml(prefix) +
+        "</span> " +
+        '<span class="text-text">' +
+        escapeHtml(cliPackage) +
+        "</span> " +
+        '<span class="text-text">' +
+        escapeHtml(activeAgent.id) +
+        "</span> " +
+        '<span class="text-text">' +
+        escapeHtml(slash) +
+        "</span>";
+      commandOutput.innerHTML = html;
       if (activeModel) {
-        const html =
-          '<span class="text-text-dim">$ </span>' +
-          '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(cliPackage) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(activeAgent.id) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
-          '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(activeModel.id) + '</span>';
-        commandOutput.innerHTML = html;
+        commandOutput.dataset.model = activeModel.id;
       } else {
-        const html =
-          '<span class="text-text-dim">$ </span>' +
-          '<span class="text-text">' + escapeHtml(prefix) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(cliPackage) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(activeAgent.id) + '</span> ' +
-          '<span class="text-text">' + escapeHtml(slash) + '</span> ' +
-          '<span class="text-text-dim">' + escapeHtml(activeAgent.modelFlag) + '</span> ' +
-          '<span class="text-text-dim">Select model ↓</span>';
-        commandOutput.innerHTML = html;
+        delete commandOutput.dataset.model;
       }
     }
 
     function getCommandText() {
       const prefix = activeRuntime.prefix.trim();
       const slash = cmd.name;
-      if (activeModel) {
-        return prefix + " " + cliPackage + " " + activeAgent.id + " " + slash + " " + activeAgent.modelFlag + " " + activeModel.id;
-      }
-      return prefix + " " + cliPackage + " " + activeAgent.id + " " + slash + " " + activeAgent.modelFlag + ' "<model>"';
+      return prefix + " " + cliPackage + " " + activeAgent.id + " " + slash;
     }
 
     function selectRuntime(rt) {
@@ -405,53 +492,7 @@ function modelsByProvider(providerId: string): typeof models {
       renderCommand();
     }
 
-    function selectModel(modelId) {
-      const model = modelMap[modelId];
-      if (!model) return;
-      activeModel = model;
-      const provider = providerMap[model.provider];
 
-      modelTriggerLabel.textContent = model.name + " — " + model.id.split("/").pop();
-      modelTriggerLabel.classList.remove("text-text-dim");
-      modelTriggerLabel.classList.add("text-text");
-
-      modelTriggerIcon.innerHTML = "";
-      const svgCode = iconRegistry && iconRegistry[provider.icon];
-      if (svgCode) {
-        modelTriggerIcon.innerHTML = svgCode;
-      }
-
-      item.querySelectorAll(".model-option").forEach((opt) => {
-        opt.classList.toggle("bg-surface-hover", opt.dataset.modelId === modelId);
-        opt.classList.toggle("text-text", opt.dataset.modelId === modelId);
-        opt.classList.toggle("text-text-muted", opt.dataset.modelId !== modelId);
-      });
-
-      closeModelDropdown();
-      renderCommand();
-    }
-
-    function openModelDropdown() {
-      modelDropdownOpen = true;
-      modelOptions.classList.remove("hidden");
-    }
-
-    function closeModelDropdown() {
-      modelDropdownOpen = false;
-      modelOptions.classList.add("hidden");
-    }
-
-    modelTrigger.addEventListener("click", (e) => {
-      e.stopPropagation();
-      modelDropdownOpen ? closeModelDropdown() : openModelDropdown();
-    });
-
-    item.querySelectorAll(".model-option").forEach((opt) => {
-      opt.addEventListener("click", (e) => {
-        e.stopPropagation();
-        selectModel(opt.dataset.modelId);
-      });
-    });
 
     item.querySelectorAll(".runtime-btn").forEach((btn) => {
       const prefix = btn.dataset.runtimePrefix;
@@ -481,23 +522,30 @@ function modelsByProvider(providerId: string): typeof models {
     copyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const cmdText = getCommandText();
-      navigator.clipboard.writeText(cmdText).then(() => {
-        copyLabel.textContent = "Copied!";
-        copyBtn.classList.add("text-text");
-        setTimeout(() => {
-          copyLabel.textContent = "Copy";
-          copyBtn.classList.remove("text-text");
-        }, 2000);
-      }).catch(() => {
-        const ta = document.createElement("textarea");
-        ta.value = cmdText;
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand("copy"); } catch {}
-        document.body.removeChild(ta);
-        copyLabel.textContent = "Copied!";
-        setTimeout(() => { copyLabel.textContent = "Copy"; }, 2000);
-      });
+      navigator.clipboard
+        .writeText(cmdText)
+        .then(() => {
+          copyLabel.textContent = "Copied!";
+          copyBtn.classList.add("text-text");
+          setTimeout(() => {
+            copyLabel.textContent = "Copy";
+            copyBtn.classList.remove("text-text");
+          }, 2000);
+        })
+        .catch(() => {
+          const ta = document.createElement("textarea");
+          ta.value = cmdText;
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand("copy");
+          } catch {}
+          document.body.removeChild(ta);
+          copyLabel.textContent = "Copied!";
+          setTimeout(() => {
+            copyLabel.textContent = "Copy";
+          }, 2000);
+        });
     });
 
     header.addEventListener("click", () => {
@@ -523,7 +571,6 @@ function modelsByProvider(providerId: string): typeof models {
         panel.classList.add("hidden");
         item.classList.remove("expanded", "relative", "z-10");
         expandIcon.style.transform = "";
-        closeModelDropdown();
       }
     });
 
@@ -616,11 +663,7 @@ function modelsByProvider(providerId: string): typeof models {
     });
   });
 
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".model-dropdown")) {
-      document.querySelectorAll(".model-options").forEach((d) => d.classList.add("hidden"));
-    }
-  });
+
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "/" && document.activeElement !== searchInput) {

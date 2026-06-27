@@ -40,6 +40,7 @@ interface InstallTarget {
 
 const DEFAULT_HOST = "https://commands-agent.netlify.app";
 const DEFAULT_RUNTIME = "bunx";
+const VERSION = "0.1.0";
 
 const PALETTE = {
   bg: chalk.bgHex("#0a0a0b"),
@@ -115,7 +116,7 @@ function banner(): void {
   console.log(art);
   console.log(
     PALETTE.dim(
-      `   ${SYM.light.repeat(WIDTH - 6)}  v0.0.1`
+      `   ${SYM.light.repeat(WIDTH - 6)}  v${VERSION}`
     )
   );
   console.log();
@@ -168,7 +169,8 @@ ${PALETTE.text("Arguments:")}
   ${PALETTE.dim("[model]")}          Optional model, only used for server compatibility
 
 ${PALETTE.text("Options:")}
-  ${PALETTE.warn("--host")} <url>            Base URL of the command server (default: http://localhost:4321)
+  ${PALETTE.warn("--host")} <url>            Base URL of the command server (default: https://commands-agent.netlify.app)
+  ${PALETTE.warn("--model")} <model>         Accepted for compatibility, ignored by the installer
   ${PALETTE.warn("--config-dir")} <path>     Override base config directory for install target
   ${PALETTE.warn("--force")}                Overwrite an existing installed command
   ${PALETTE.warn("--dry-run")}              Print the install target without writing
@@ -468,6 +470,7 @@ async function main(): Promise<void> {
     options: {
       runtime: { type: "string", default: DEFAULT_RUNTIME },
       host: { type: "string", default: DEFAULT_HOST },
+      model: { type: "string" },
       "config-dir": { type: "string" },
       force: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },

@@ -1,6 +1,6 @@
 # commands-agent-cli
 
-CLI companion for the commands.agent marketplace. Installs marketplace slash commands into the selected agent CLI configuration.
+CLI companion for the commands.agent marketplace. Published as `commands-agent-cli@0.1.0` and installs marketplace slash commands into the selected agent CLI configuration.
 
 ## Usage
 
@@ -23,7 +23,7 @@ commands-agent <agent> <slash-command> [model] [options]
 - `--json` — Output install metadata as JSON
 - `--help` — Show help message
 
-The CLI fetches the agent-specific markdown from `/command` and writes it to the selected agent's command directory.
+The CLI fetches the agent-specific markdown from `/command` and writes it to the selected agent's command directory. The `model` argument and `--model` flag are accepted for compatibility, but they are ignored.
 
 Default install targets:
 
@@ -37,6 +37,9 @@ Default install targets:
 # Show where the command would be installed
 commands-agent opencode /github-push --dry-run
 # → ~/.config/opencode/command/github-push.md
+
+# Run the published package
+bunx commands-agent-cli@0.1.0 opencode /github-push
 
 # Install a Claude Code slash command
 commands-agent claude /create-pr
