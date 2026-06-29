@@ -450,11 +450,6 @@ const commands = await getCommands();
         escapeHtml(slash) +
         "</span>";
       commandOutput.innerHTML = html;
-      if (activeModel) {
-        commandOutput.dataset.model = activeModel.id;
-      } else {
-        delete commandOutput.dataset.model;
-      }
     }
 
     function getCommandText() {

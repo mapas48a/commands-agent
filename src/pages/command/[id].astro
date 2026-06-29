@@ -250,11 +250,6 @@ const techArticleJsonLd = {
         '<span class="text-text">' + escapeHtml(cliPackage) + '</span> ' +
         '<span class="text-text">' + escapeHtml(activeAgent.id) + '</span> ' +
         '<span class="text-text">' + escapeHtml(slash) + '</span>';
-      if (activeModel) {
-        commandOutput.dataset.model = activeModel.id;
-      } else {
-        delete commandOutput.dataset.model;
-      }
     }
 
     function getCommandText() {
